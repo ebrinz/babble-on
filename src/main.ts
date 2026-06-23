@@ -6,7 +6,7 @@ import "./style.css";
 function canvas(id: string): [CanvasRenderingContext2D, number, number] {
   const el = document.getElementById(id) as HTMLCanvasElement;
   const w = el.clientWidth, h = el.clientHeight;
-  el.width = w; el.height = h;
+  if (el.width !== w || el.height !== h) { el.width = w; el.height = h; }
   return [el.getContext("2d")!, w, h];
 }
 
