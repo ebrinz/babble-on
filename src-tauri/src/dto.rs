@@ -1,5 +1,5 @@
 use serde::Serialize;
-use crate::stats::{Snapshot, Metric, Verdict, Band, AnomalyEvent};
+use crate::stats::{Snapshot, Metric, Verdict};
 
 #[derive(Serialize)]
 pub struct MetricDto { pub value: Option<f64>, pub quality: f64, pub verdict: &'static str }
