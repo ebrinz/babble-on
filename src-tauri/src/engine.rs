@@ -42,6 +42,10 @@ impl Engine {
         if !self.paused {
             drain_into(&self.source.data_rx, &mut self.stats);
             self.stats.tick_trials();
+        } else {
+            // Keep the unbounded channel from growing while paused, without
+            // feeding the bytes into the (frozen) stats window.
+            while self.source.data_rx.try_recv().is_ok() {}
         }
         let snap = self.stats.snapshot();
         if !self.paused {
