@@ -42,10 +42,11 @@ impl Engine {
         if !self.paused {
             drain_into(&self.source.data_rx, &mut self.stats);
             self.stats.tick_trials();
-            let shannon = self.stats.snapshot().shannon.value;
-            self.stats.tick_curve(shannon);
         }
         let snap = self.stats.snapshot();
+        if !self.paused {
+            self.stats.tick_curve(snap.shannon.value);
+        }
         SnapshotDto::from_snapshot(&snap, self.source.label.clone(), self.status.clone())
     }
 }
@@ -86,7 +87,8 @@ mod tests {
     fn pause_stops_accumulation() {
         let mut e = Engine::new(SourceKind::Simulate);
         std::thread::sleep(Duration::from_millis(120));
-        let _ = e.tick();
+        let a0 = e.tick();
+        assert!(a0.total_bytes > 0);
         e.apply(ControlMsg::SetPaused(true));
         let a = e.tick();
         std::thread::sleep(Duration::from_millis(120));
@@ -97,7 +99,9 @@ mod tests {
     #[test]
     fn resolve_kind_falls_back_to_simulate() {
         assert!(matches!(resolve_kind("bad", None, 9600), SourceKind::BadRng));
-        // "auto" with no device present resolves to Simulate.
-        let _ = resolve_kind("auto", None, 9600);
+        // "auto" returns Serial if a device is present, else Simulate — both valid.
+        assert!(matches!(resolve_kind("auto", None, 9600), SourceKind::Simulate | SourceKind::Serial { .. }));
+        // "serial" with an explicit path returns Serial with that path.
+        assert!(matches!(resolve_kind("serial", Some("/dev/null".into()), 9600), SourceKind::Serial { .. }));
     }
 }

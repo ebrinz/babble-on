@@ -15,22 +15,22 @@ struct Control(Mutex<Sender<ControlMsg>>);
 #[tauri::command]
 fn start_source(kind: String, path: Option<String>, baud: Option<u32>, ctrl: tauri::State<Control>) {
     let k = resolve_kind(&kind, path, baud.unwrap_or(9600));
-    let _ = ctrl.0.lock().unwrap().send(ControlMsg::SetSource(k));
+    let _ = ctrl.0.lock().unwrap_or_else(|e| e.into_inner()).send(ControlMsg::SetSource(k));
 }
 
 #[tauri::command]
 fn reset(ctrl: tauri::State<Control>) {
-    let _ = ctrl.0.lock().unwrap().send(ControlMsg::Reset);
+    let _ = ctrl.0.lock().unwrap_or_else(|e| e.into_inner()).send(ControlMsg::Reset);
 }
 
 #[tauri::command]
 fn set_window(n: usize, ctrl: tauri::State<Control>) {
-    let _ = ctrl.0.lock().unwrap().send(ControlMsg::SetWindow(n));
+    let _ = ctrl.0.lock().unwrap_or_else(|e| e.into_inner()).send(ControlMsg::SetWindow(n));
 }
 
 #[tauri::command]
 fn set_paused(paused: bool, ctrl: tauri::State<Control>) {
-    let _ = ctrl.0.lock().unwrap().send(ControlMsg::SetPaused(paused));
+    let _ = ctrl.0.lock().unwrap_or_else(|e| e.into_inner()).send(ControlMsg::SetPaused(paused));
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
