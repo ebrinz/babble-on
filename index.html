@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Babble-on</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <main>
+      <header>
+        <span id="label">connecting…</span>
+        <span id="status"></span>
+        <span id="rate"></span>
+        <select id="source">
+          <option value="auto">auto-detect</option>
+          <option value="simulate">simulate</option>
+          <option value="bad">bad rng</option>
+        </select>
+        <button id="pause">pause</button>
+        <button id="reset">reset</button>
+      </header>
+      <section class="grid">
+        <div class="panel"><h2>Coherence</h2><canvas id="coherence"></canvas></div>
+        <div class="panel"><h2>Randomness</h2><ul id="metrics"></ul></div>
+        <div class="panel"><h2>Byte distribution</h2><canvas id="histogram"></canvas></div>
+        <div class="panel"><h2>Bitstream</h2><canvas id="bitstream"></canvas></div>
+      </section>
+    </main>
+  </body>
+</html>

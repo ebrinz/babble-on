@@ -98,9 +98,11 @@ mod tests {
     use super::*;
     #[test]
     fn known_values() {
-        assert!((erfc(0.0) - 1.0).abs() < 1e-9);
-        assert!((normal_sf(0.0) - 0.5).abs() < 1e-9);
-        assert!((normal_two_sided(0.0) - 1.0).abs() < 1e-9);
+        // Tolerance 1e-6: the A&S 7.1.26 erfc approximation has documented max
+        // error ~1.5e-7, so a tighter bound would fail on a correct port.
+        assert!((erfc(0.0) - 1.0).abs() < 1e-6);
+        assert!((normal_sf(0.0) - 0.5).abs() < 1e-6);
+        assert!((normal_two_sided(0.0) - 1.0).abs() < 1e-6);
         // chi-square at its mean (x=k) gives p≈0.5 for large k.
         assert!((chi_square_sf(255.0, 255.0) - 0.5).abs() < 0.05);
     }
