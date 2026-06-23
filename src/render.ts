@@ -30,27 +30,51 @@ type Dto = any;
 
 export function drawCoherence(ctx: CanvasRenderingContext2D, dto: Dto, w: number, h: number) {
   ctx.clearRect(0, 0, w, h);
-  const walk: [number, number][] = dto.walk;
-  const maxK = Math.max(50, dto.trial_count || 50);
-  const yMax = 3.29052673 * Math.sqrt(maxK) * 1.2 || 10;
-  const sx = (k: number) => (k / maxK) * w;
+  const walk: [number, number][] = dto.walk || [];
+
+  // X-axis spans the visible trial window [kFirst, kLast] and fills the panel.
+  // Pinning the oldest retained trial to x=0 keeps the walk from floating right
+  // as the cumulative-deviation history scrolls (the trial window is finite).
+  const kFirst = walk.length ? walk[0][0] : 0;
+  const kLast = walk.length ? walk[walk.length - 1][0] : Math.max(50, dto.trial_count || 50);
+  const span = Math.max(1, kLast - kFirst);
+  const sx = (k: number) => ((k - kFirst) / span) * w;
+
+  // Y-axis centered on the mean (C = 0); scaled so the 99.9% envelope fits.
+  const yMax = Math.max(4, 3.29052673 * Math.sqrt(Math.max(1, kLast)) * 1.15);
   const sy = (c: number) => h / 2 - (c / yMax) * (h / 2);
-  // envelopes
-  for (const [z, color] of [[1.95996398, GOLD], [2.5758293, ORANGE], [3.29052673, RED]] as [number,string][]) {
+
+  // Significance envelopes ±z·√k, evaluated at the true trial index k across
+  // the window — a vertex fan early on, a gently widening band once it scrolls.
+  const STEPS = 80;
+  for (const [z, color] of [[1.95996398, GOLD], [2.5758293, ORANGE], [3.29052673, RED]] as [number, string][]) {
     for (const sign of [1, -1]) {
-      ctx.strokeStyle = color; ctx.globalAlpha = 0.5; ctx.beginPath();
-      envelopePoints(maxK, z).forEach(([k, c], i) => {
-        const x = sx(k), y = sy(sign * c);
+      ctx.strokeStyle = color; ctx.globalAlpha = 0.5; ctx.lineWidth = 1; ctx.beginPath();
+      for (let i = 0; i <= STEPS; i++) {
+        const k = kFirst + (span * i) / STEPS;
+        const x = (i / STEPS) * w, y = sy(sign * z * Math.sqrt(Math.max(0, k)));
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      });
+      }
       ctx.stroke();
     }
   }
   ctx.globalAlpha = 1;
-  // the walk
-  ctx.strokeStyle = bandColor(dto.coherence_band); ctx.lineWidth = 1.5; ctx.beginPath();
-  walk.forEach(([k, c], i) => { const x = sx(k), y = sy(c); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
-  ctx.stroke();
+
+  // Mean reference line at C = 0 — the expected value of the walk under pure
+  // randomness. A healthy stream wanders symmetrically around it.
+  ctx.save();
+  ctx.strokeStyle = "#5a6b66"; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
+  ctx.beginPath(); ctx.moveTo(0, sy(0)); ctx.lineTo(w, sy(0)); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = "#5a6b66"; ctx.font = "11px ui-monospace, monospace";
+  ctx.fillText("mean 0", 4, sy(0) - 4);
+
+  // The cumulative-deviation walk, filling the width, colored by current band.
+  if (walk.length >= 2) {
+    ctx.strokeStyle = bandColor(dto.coherence_band); ctx.lineWidth = 1.5; ctx.beginPath();
+    walk.forEach(([k, c], i) => { const x = sx(k), y = sy(c); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
+    ctx.stroke();
+  }
 }
 
 export function drawHistogram(ctx: CanvasRenderingContext2D, dto: Dto, w: number, h: number) {

@@ -1,5 +1,9 @@
 //! Entropy sources. A background thread reads bytes and ships chunks over an
 //! `mpsc` channel to the UI thread, which never blocks on I/O.
+//!
+//! Ported verbatim from ghostty-rng. `SourceStatus::Error` is reserved for
+//! fatal-source reporting wired up in a later plan, so it is currently unused.
+#![allow(dead_code)]
 
 use std::io::Read;
 use std::sync::mpsc::{Receiver, Sender};

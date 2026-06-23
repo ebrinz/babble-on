@@ -4,6 +4,11 @@
 //! window (`VecDeque<u8>`) of the most recent bytes is maintained, along with
 //! an incrementally-updated 256-bin histogram and a running popcount. Each
 //! frame the UI calls [`Stats::snapshot`] to compute the derived metrics.
+//!
+//! Ported verbatim from ghostty-rng. The audit buffer (`audit_len`/
+//! `audit_sample`) and anomaly bell (`take_alert`) are consumed by features
+//! wired up in a later plan, so they are intentionally unused in this build.
+#![allow(dead_code)]
 
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};

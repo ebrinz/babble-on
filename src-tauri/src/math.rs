@@ -1,6 +1,11 @@
 //! Small numerical helpers: error function and tail p-values for the
 //! randomness tests. No external math crate — these approximations are
 //! accurate to better than 1e-7, which is far beyond what we display.
+//!
+//! Ported verbatim from ghostty-rng. The exact incomplete-gamma chain
+//! (`ln_gamma`/`gamma_q`/`chi_square_p`) is wired up by the authenticity audit
+//! in a later plan, so some helpers are intentionally unused in this build.
+#![allow(dead_code)]
 
 /// Complementary error function, Abramowitz & Stegun 7.1.26 (max err ~1.5e-7).
 pub fn erfc(x: f64) -> f64 {
