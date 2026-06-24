@@ -4,6 +4,7 @@
 
 mod model;
 mod sampler;
+mod trng;
 
 use anyhow::{Context, Result};
 use candle_core::{DType, Device, IndexOp, Tensor};
@@ -68,7 +69,7 @@ fn validate() -> Result<()> {
     Ok(())
 }
 
-fn generate(steps: usize, seq_len: usize) -> Result<()> {
+fn generate(steps: usize, seq_len: usize, entropy_file: Option<String>) -> Result<()> {
     let device = Device::new_metal(0).unwrap_or(Device::Cpu);
     println!("device: {device:?}");
     let meta = load_meta()?;
@@ -84,8 +85,20 @@ fn generate(steps: usize, seq_len: usize) -> Result<()> {
     let m = DiffusionModel::load(&weights, config(&meta), device)?;
     let tok = tokenizers::Tokenizer::from_file(TOKENIZER).map_err(anyhow::Error::msg)?;
 
-    // PRNG Gaussian noise (TrueRNG source comes in the next step).
+    // If an entropy file is given, those bytes seed the initial latent z1 (the
+    // literal Gaussian noise tensor); per-step ancestral noise stays PRNG.
+    let entropy = entropy_file.map(std::fs::read).transpose()?;
+    if entropy.is_some() {
+        println!("seeding initial latent from entropy file");
+    }
+    let mut first = true;
     let mut noise = |shape: &[usize]| -> candle_core::Result<Tensor> {
+        if first {
+            first = false;
+            if let Some(raw) = &entropy {
+                return trng::bytes_to_gaussians(raw, shape);
+            }
+        }
         Tensor::randn(0f32, 1f32, shape, &Device::Cpu)?.to_dtype(DType::F64)
     };
 
@@ -106,7 +119,8 @@ fn main() -> Result<()> {
     if args.get(1).map(|s| s.as_str()) == Some("generate") {
         let steps = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(48);
         let seq_len = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(64);
-        generate(steps, seq_len)
+        let entropy_file = args.get(4).cloned();
+        generate(steps, seq_len, entropy_file)
     } else {
         validate()
     }
