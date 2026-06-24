@@ -1,0 +1,20 @@
+[package]
+name = "diffusion-rs"
+version = "0.1.0"
+edition = "2021"
+description = "All-Rust candle port of Plaid-1B continuous text diffusion, TrueRNG-seeded."
+
+[dependencies]
+candle-core = { version = "0.10", features = ["metal"] }
+candle-nn = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokenizers = "0.23"
+anyhow = "1"
+
+[[bin]]
+name = "diffusion"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
