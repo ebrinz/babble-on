@@ -1,0 +1,7 @@
+# Mac/MPS sidecar deps for Plaid-1B (no CUDA: apex/flash-attn are shimmed in compat.py)
+torch>=2.4
+einops
+mup
+tokenizers>=0.15
+numpy
+pyserial
