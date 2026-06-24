@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { drawCoherence, drawHistogram, drawBitstream, verdictColor } from "./render";
+import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor } from "./render";
 import "./style.css";
 
 function canvas(id: string): [CanvasRenderingContext2D, number, number] {
@@ -12,8 +12,46 @@ function canvas(id: string): [CanvasRenderingContext2D, number, number] {
 
 let paused = false;
 
+// Wall-clock anchor for the anomaly log: the backend timestamps excursions in
+// seconds since its session start, so we peg that origin to a wall time. Re-peg
+// when the stats reset (total_bytes drops back).
+let sessionStartWall = Date.now();
+let lastTotal = -1;
+
+function fmtClock(atSecs: number): string {
+  return new Date(sessionStartWall + atSecs * 1000).toLocaleTimeString([], { hour12: false });
+}
+function fmtElapsed(s: number): string {
+  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+  return `+${m}:${sec.toString().padStart(2, "0")}`;
+}
+
+function renderAnomalies(anomalies: any[]) {
+  const el = document.getElementById("anomalies")!;
+  if (!anomalies.length) {
+    el.innerHTML = `<div class="empty">no band excursions yet — the walk is in-band</div>`;
+    return;
+  }
+  el.innerHTML = anomalies.map((a) => {
+    const up = a.peak_sigma >= 0;
+    const col = bandColor(a.band);
+    const dir = `${up ? "▲" : "▼"} ${up ? "+" : "−"}${Math.abs(a.peak_sigma).toFixed(2)}σ`;
+    const dur = a.ongoing
+      ? `<span class="live">● live ${a.duration_secs.toFixed(1)}s</span>`
+      : `${a.duration_secs.toFixed(1)}s`;
+    return `<div class="anom">` +
+      `<span class="t" title="${fmtElapsed(a.at_secs)}">${fmtClock(a.at_secs)}</span>` +
+      `<span class="dir" style="color:${col}">${dir}</span>` +
+      `<span class="band" style="color:${col}">${a.band}</span>` +
+      `<span class="dur">${dur}</span></div>`;
+  }).join("");
+}
+
 listen<any>("snapshot", (e) => {
   const dto = e.payload;
+  // Re-peg the wall-clock origin on first frame and whenever stats reset.
+  if (lastTotal < 0 || dto.total_bytes < lastTotal) sessionStartWall = Date.now();
+  lastTotal = dto.total_bytes;
   document.getElementById("label")!.textContent = dto.label;
   document.getElementById("status")!.textContent = dto.status;
   document.getElementById("rate")!.textContent =
@@ -30,6 +68,8 @@ listen<any>("snapshot", (e) => {
   document.getElementById("metrics")!.innerHTML = rows.map(([name, m]) =>
     `<li style="color:${verdictColor(m.verdict)}">${name}: ${m.value == null ? "…" : m.value.toFixed(4)} <b>${m.verdict.toUpperCase()}</b></li>`
   ).join("");
+
+  renderAnomalies(dto.anomalies || []);
 });
 
 document.getElementById("source")!.addEventListener("change", (ev) =>

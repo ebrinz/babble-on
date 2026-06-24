@@ -185,7 +185,11 @@ impl Stats {
             cum: 0.0,
             trial_count: 0,
             walk: VecDeque::new(),
-            walk_cap: 600,
+            // Retain a long walk history so the coherence chart can render the
+            // full cumulative-deviation path from the session origin (the
+            // horseshoe vertex) without the line floating right as it scrolls.
+            // The DTO decimates this for transport, so the cost is just memory.
+            walk_cap: 18000,
             current_event: None,
             events: VecDeque::new(),
             events_cap: 64,

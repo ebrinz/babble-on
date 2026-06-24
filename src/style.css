@@ -10,3 +10,15 @@ header select, header button { background:#111614; color:var(--turq); border:1px
 .panel canvas { flex:1; width:100%; min-height:0; }
 #metrics { list-style:none; margin:0; padding:0; }
 #metrics li { padding:3px 0; }
+
+/* Anomaly log — a fixed-height strip below the 2×2 grid. */
+.log { height:180px; margin:0 10px 10px; }
+#anomalies { flex:1; overflow-y:auto; min-height:0; font-size:13px; }
+#anomalies .empty { color:#5a6b66; padding:4px 2px; }
+.anom { display:grid; grid-template-columns:96px 110px 64px 1fr; gap:10px; align-items:baseline;
+        padding:2px 4px; border-bottom:1px solid #141a18; }
+.anom .t { color:#9fb0ab; }
+.anom .dir { font-weight:600; }
+.anom .band { font-weight:600; }
+.anom .dur { color:#7a8a85; }
+.anom .live { color:var(--gold); }

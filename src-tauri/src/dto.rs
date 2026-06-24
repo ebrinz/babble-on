@@ -32,6 +32,22 @@ pub struct SnapshotDto {
 
 fn nz(x: f64) -> Option<f64> { if x.is_finite() { Some(x) } else { None } }
 
+/// Decimate the cumulative-deviation walk to at most `max` points for transport,
+/// preserving the first and last points so the chart still spans vertex→now.
+fn decimate_walk(walk: &[(f64, f64)], max: usize) -> Vec<(f64, f64)> {
+    if walk.len() <= max {
+        return walk.to_vec();
+    }
+    let stride = walk.len().div_ceil(max);
+    let mut out: Vec<(f64, f64)> = walk.iter().step_by(stride).copied().collect();
+    if let Some(&last) = walk.last() {
+        if out.last() != Some(&last) {
+            out.push(last);
+        }
+    }
+    out
+}
+
 fn verdict_str(v: Verdict) -> &'static str {
     match v { Verdict::Pass => "pass", Verdict::Warn => "warn", Verdict::Fail => "fail", Verdict::Warmup => "warmup" }
 }
@@ -58,7 +74,7 @@ impl SnapshotDto {
             coherence_sigma: s.coherence_sigma,
             coherence_band: s.coherence_band.label(),
             trial_count: s.trial_count,
-            walk: s.walk.clone(),
+            walk: decimate_walk(&s.walk, 1500),
             anomalies: s.anomalies.iter().map(|a| AnomalyDto {
                 at_secs: a.at_secs, peak_sigma: a.peak_sigma, band: a.band.label(),
                 duration_secs: a.duration_secs, ongoing: a.ongoing,
@@ -83,5 +99,20 @@ mod tests {
         let json = serde_json::to_string(&dto).unwrap();
         assert!(!json.contains("NaN"), "JSON must not contain NaN: {json}");
         assert!(json.contains("\"warmup\""), "expected a warmup verdict");
+    }
+
+    #[test]
+    fn decimate_caps_length_and_keeps_endpoints() {
+        let walk: Vec<(f64, f64)> = (0..5000).map(|k| (k as f64, (k as f64) * 0.5)).collect();
+        let out = decimate_walk(&walk, 1500);
+        assert!(out.len() <= 1501, "decimated to {} points", out.len());
+        assert_eq!(out.first(), walk.first(), "must keep the vertex point");
+        assert_eq!(out.last(), walk.last(), "must keep the newest point");
+    }
+
+    #[test]
+    fn decimate_is_identity_below_cap() {
+        let walk: Vec<(f64, f64)> = (0..800).map(|k| (k as f64, 0.0)).collect();
+        assert_eq!(decimate_walk(&walk, 1500), walk);
     }
 }
