@@ -211,6 +211,14 @@ impl Stats {
         self.audit_buf.iter().copied().collect()
     }
 
+    /// The most recent `n` bytes of the stream — used to seed the diffusion
+    /// sidecar's noise from live hardware entropy. Returns fewer than `n` only
+    /// during warmup before that many bytes have arrived.
+    pub fn fresh_entropy(&self, n: usize) -> Vec<u8> {
+        let start = self.audit_buf.len().saturating_sub(n);
+        self.audit_buf.iter().skip(start).copied().collect()
+    }
+
     /// Resize the window, discarding the oldest bytes if shrinking.
     pub fn set_capacity(&mut self, capacity: usize) {
         self.capacity = capacity.max(256);

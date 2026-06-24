@@ -79,3 +79,53 @@ document.getElementById("pause")!.addEventListener("click", () => {
   paused = !paused; invoke("set_paused", { paused });
   document.getElementById("pause")!.textContent = paused ? "resume" : "pause";
 });
+
+// --- Diffusion pane ---------------------------------------------------------
+const MODES: Record<string, { steps: number; seqLen: number }> = {
+  fast: { steps: 48, seqLen: 96 },
+  balanced: { steps: 192, seqLen: 256 },
+  quality: { steps: 384, seqLen: 256 },
+};
+
+const genBtn = document.getElementById("gen-btn") as HTMLButtonElement;
+const genStatus = document.getElementById("gen-status")!;
+const genOutput = document.getElementById("gen-output")!;
+
+listen<any>("diffusion", (e) => {
+  const m = e.payload;
+  switch (m.type) {
+    case "loading":
+      genStatus.textContent = "loading model…";
+      break;
+    case "step":
+      genStatus.textContent = `crystallizing… step ${m.i}/${m.total}`;
+      genOutput.classList.add("live");
+      genOutput.textContent = m.text[0];
+      break;
+    case "done":
+      genStatus.textContent = `done in ${m.elapsed}s`;
+      genOutput.classList.remove("live");
+      genOutput.textContent = m.text[0];
+      genBtn.disabled = false;
+      break;
+    case "error":
+      genStatus.textContent = `error: ${m.message}`;
+      genOutput.classList.remove("live");
+      genBtn.disabled = false;
+      break;
+  }
+});
+
+genBtn.addEventListener("click", () => {
+  const mode = (document.getElementById("gen-mode") as HTMLSelectElement).value;
+  const { steps, seqLen } = MODES[mode] || MODES.balanced;
+  genBtn.disabled = true;
+  genStatus.textContent = "seeding from entropy…";
+  genOutput.classList.add("live");
+  genOutput.textContent = "";
+  invoke("generate", { steps, seqLen, nSamples: 1 }).catch((err) => {
+    genStatus.textContent = `error: ${err}`;
+    genOutput.classList.remove("live");
+    genBtn.disabled = false;
+  });
+});

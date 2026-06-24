@@ -27,6 +27,21 @@
         <div class="panel"><h2>Byte distribution</h2><canvas id="histogram"></canvas></div>
         <div class="panel"><h2>Bitstream</h2><canvas id="bitstream"></canvas></div>
       </section>
+      <section class="panel gen">
+        <h2>Diffusion · text crystallizing from hardware entropy</h2>
+        <div class="gen-controls">
+          <input id="prompt" type="text" disabled
+                 placeholder="prompt steering — coming next; unconditional for now" />
+          <select id="gen-mode">
+            <option value="fast">fast · 48 steps</option>
+            <option value="balanced" selected>balanced · 192 steps</option>
+            <option value="quality">quality · 384 steps</option>
+          </select>
+          <button id="gen-btn">Generate</button>
+          <span id="gen-status">idle</span>
+        </div>
+        <div id="gen-output" class="gen-output"></div>
+      </section>
       <section class="panel log">
         <h2>Anomaly log · band excursions</h2>
         <div id="anomalies"></div>

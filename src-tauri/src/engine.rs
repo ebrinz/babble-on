@@ -7,6 +7,9 @@ pub enum ControlMsg {
     Reset,
     SetWindow(usize),
     SetPaused(bool),
+    /// Request the most recent `n` bytes of the stream, replied over the sender
+    /// — used to seed the diffusion sidecar with live hardware entropy.
+    GetEntropy(usize, std::sync::mpsc::Sender<Vec<u8>>),
 }
 
 pub struct Engine {
@@ -28,6 +31,9 @@ impl Engine {
             ControlMsg::Reset => self.stats.reset(),
             ControlMsg::SetWindow(n) => self.stats.set_capacity(n),
             ControlMsg::SetPaused(p) => self.paused = p,
+            ControlMsg::GetEntropy(n, reply) => {
+                let _ = reply.send(self.stats.fresh_entropy(n));
+            }
         }
     }
 
