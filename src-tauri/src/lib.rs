@@ -44,6 +44,7 @@ fn generate(
     steps: Option<usize>,
     seq_len: Option<usize>,
     n_samples: Option<usize>,
+    prompt: Option<String>,
     app: tauri::AppHandle,
     ctrl: tauri::State<Control>,
     diff: tauri::State<Arc<Diffusion>>,
@@ -69,7 +70,7 @@ fn generate(
     let app2 = app.clone();
     let diff2: Arc<Diffusion> = diff.inner().clone();
     std::thread::spawn(move || {
-        if let Err(e) = run_generation(&app2, &diff2, steps, seq_len, n_samples, entropy) {
+        if let Err(e) = run_generation(&app2, &diff2, steps, seq_len, n_samples, prompt, entropy) {
             let _ = app2.emit("diffusion", serde_json::json!({"type": "error", "message": e}));
         }
         diff2.release();

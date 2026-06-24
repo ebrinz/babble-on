@@ -59,28 +59,28 @@ fn validate() -> Result<()> {
     Ok(())
 }
 
-fn generate(steps: usize, seq_len: usize, entropy_file: Option<String>) -> Result<()> {
-    let entropy = entropy_file.map(std::fs::read).transpose()?;
+fn generate(steps: usize, seq_len: usize, prompt: Option<String>) -> Result<()> {
     println!("loading model ...");
     let eng = Engine::load(MODEL_DIR, TOKENIZER, true)?;
     println!("device: {}", eng.device_label);
-    if entropy.is_some() {
-        println!("seeding initial latent from entropy file");
+    if let Some(p) = &prompt {
+        println!("prompt (inpainted prefix): {p:?}");
     }
     println!("sampling: {seq_len} tokens, {steps} steps ...");
     let t0 = std::time::Instant::now();
-    let text = eng.generate(
+    let tokens = eng.generate(
         steps,
         seq_len,
         0.9,
         (steps / 12).max(1),
-        entropy.as_deref(),
-        |i, total, _partial| eprint!("\r  step {i}/{total}   "),
+        None,
+        prompt.as_deref(),
+        |i, total, _toks| eprint!("\r  step {i}/{total}   "),
     )?;
     let dt = t0.elapsed().as_secs_f64();
     eprintln!();
     println!("done in {dt:.1}s ({:.0} ms/step)\n", dt / steps as f64 * 1000.0);
-    println!("{text}");
+    println!("{}", tokens.join(""));
     Ok(())
 }
 
@@ -89,7 +89,8 @@ fn main() -> Result<()> {
     if args.get(1).map(|s| s.as_str()) == Some("generate") {
         let steps = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(48);
         let seq_len = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(64);
-        generate(steps, seq_len, args.get(4).cloned())
+        let prompt = if args.len() > 4 { Some(args[4..].join(" ")) } else { None };
+        generate(steps, seq_len, prompt)
     } else {
         validate()
     }

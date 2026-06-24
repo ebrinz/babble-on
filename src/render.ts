@@ -25,6 +25,39 @@ export function envelopePoints(maxK: number, z: number): [number, number][] {
   return pts;
 }
 
+// --- Crystallization (streaming diffusion) helpers --------------------------
+// Diffusion refines every token position in place across steps, so we diff
+// position-by-position and track a per-position "heat" = steps since it last
+// changed. Just-changed tokens are hot (gold); long-settled ones cool to
+// turquoise — the passage visibly boils, then crystallizes.
+
+export function crystallize(
+  prev: string[],
+  next: string[],
+  heat: number[],
+): { changed: boolean[]; heat: number[] } {
+  const changed = next.map((tok, i) => prev[i] !== tok);
+  const newHeat = next.map((_, i) => (changed[i] ? 0 : (heat[i] ?? 99) + 1));
+  return { changed, heat: newHeat };
+}
+
+function hexToRgb(h: string): [number, number, number] {
+  const n = parseInt(h.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function lerpColor(a: string, b: string, t: number): string {
+  const [ar, ag, ab] = hexToRgb(a);
+  const [br, bg, bb] = hexToRgb(b);
+  const m = (x: number, y: number) => Math.round(x + (y - x) * t);
+  return `rgb(${m(ar, br)},${m(ag, bg)},${m(ab, bb)})`;
+}
+
+/// heat 0 (just changed) = gold; cools to turquoise by heat >= 6.
+export function heatColor(h: number): string {
+  return lerpColor(GOLD, TURQUOISE, Math.min(h, 6) / 6);
+}
+
 // --- Canvas painters (not unit-tested; verified manually in Task 8) ---
 type Dto = any;
 

@@ -11,8 +11,8 @@ header select, header button { background:#111614; color:var(--turq); border:1px
 #metrics { list-style:none; margin:0; padding:0; }
 #metrics li { padding:3px 0; }
 
-/* Diffusion pane — entropy-seeded text crystallizing from noise. */
-.gen { height:260px; margin:0 10px 10px; }
+/* Diffusion pane — entropy-seeded text crystallizing from noise. The centerpiece. */
+.gen { height:340px; margin:0 10px 10px; }
 .gen-controls { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
 .gen-controls input { flex:1; background:#111614; color:var(--turq); border:1px solid #243029; padding:5px 8px; font:inherit; }
 .gen-controls input:disabled { opacity:0.45; }
@@ -20,9 +20,15 @@ header select, header button { background:#111614; color:var(--turq); border:1px
 .gen-controls button { background:#15201c; color:var(--gold); border:1px solid #2a3a32; padding:5px 16px; font:inherit; cursor:pointer; }
 .gen-controls button:disabled { opacity:0.5; cursor:default; }
 #gen-status { color:#7a8a85; font-size:12px; margin-left:auto; }
-.gen-output { flex:1; overflow-y:auto; min-height:0; white-space:pre-wrap; line-height:1.55; font-size:14px; color:#d7f5ec; }
-.gen-output.live { color:#86b3a8; }
-.gen-output.live::after { content:"▋"; color:var(--gold); animation:blink 1s steps(2) infinite; }
+.gen-output { flex:1; overflow-y:auto; min-height:0; white-space:pre-wrap; line-height:1.7; font-size:17px; letter-spacing:0.1px; }
+.gen-output .tok { transition:color 0.25s linear; border-radius:2px; }
+/* changed-this-step token: a gold glow that fades, so you see the text edit itself in place */
+.gen-output .tok.flash { animation:tokflash 0.55s ease-out; }
+@keyframes tokflash {
+  0%   { background:rgba(242,193,78,0.55); box-shadow:0 0 6px rgba(242,193,78,0.5); color:#fff; }
+  100% { background:transparent; box-shadow:none; }
+}
+.gen-output.boiling::after { content:"▋"; color:var(--gold); animation:blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity:0; } }
 
 /* Anomaly log — a fixed-height strip below the 2×2 grid. */

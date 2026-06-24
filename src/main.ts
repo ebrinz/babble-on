@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor } from "./render";
+import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor, crystallize, heatColor } from "./render";
 import "./style.css";
 
 function canvas(id: string): [CanvasRenderingContext2D, number, number] {
@@ -90,27 +90,48 @@ const MODES: Record<string, { steps: number; seqLen: number }> = {
 const genBtn = document.getElementById("gen-btn") as HTMLButtonElement;
 const genStatus = document.getElementById("gen-status")!;
 const genOutput = document.getElementById("gen-output")!;
+const promptInput = document.getElementById("prompt") as HTMLInputElement;
+
+const escape = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+let crystalTokens: string[] = [];
+let crystalHeat: number[] = [];
+
+// Render the passage as per-position spans: changed-this-step tokens flash gold,
+// and each token is colored by its heat (steps since it last changed) so the
+// text visibly boils then crystallizes.
+function renderCrystal(tokens: string[], flash: boolean) {
+  const { changed, heat } = crystallize(crystalTokens, tokens, crystalHeat);
+  crystalTokens = tokens;
+  crystalHeat = heat;
+  genOutput.innerHTML = tokens
+    .map((tok, i) => {
+      const cls = flash && changed[i] ? "tok flash" : "tok";
+      return `<span class="${cls}" style="color:${heatColor(heat[i])}">${escape(tok)}</span>`;
+    })
+    .join("");
+}
 
 listen<any>("diffusion", (e) => {
   const m = e.payload;
   switch (m.type) {
     case "loading":
-      genStatus.textContent = "loading model…";
+      genStatus.textContent = "loading model… (first run only)";
       break;
     case "step":
       genStatus.textContent = `crystallizing… step ${m.i}/${m.total}`;
-      genOutput.classList.add("live");
-      genOutput.textContent = m.text[0];
+      renderCrystal(m.tokens, true);
       break;
     case "done":
       genStatus.textContent = `done in ${m.elapsed}s`;
-      genOutput.classList.remove("live");
-      genOutput.textContent = m.text[0];
+      genOutput.classList.remove("boiling");
+      renderCrystal(m.tokens, false);
       genBtn.disabled = false;
       break;
     case "error":
       genStatus.textContent = `error: ${m.message}`;
-      genOutput.classList.remove("live");
+      genOutput.classList.remove("boiling");
       genBtn.disabled = false;
       break;
   }
@@ -119,13 +140,16 @@ listen<any>("diffusion", (e) => {
 genBtn.addEventListener("click", () => {
   const mode = (document.getElementById("gen-mode") as HTMLSelectElement).value;
   const { steps, seqLen } = MODES[mode] || MODES.balanced;
+  const prompt = promptInput.value.trim() || undefined;
   genBtn.disabled = true;
   genStatus.textContent = "seeding from entropy…";
-  genOutput.classList.add("live");
-  genOutput.textContent = "";
-  invoke("generate", { steps, seqLen, nSamples: 1 }).catch((err) => {
+  genOutput.classList.add("boiling");
+  genOutput.innerHTML = "";
+  crystalTokens = [];
+  crystalHeat = [];
+  invoke("generate", { steps, seqLen, nSamples: 1, prompt }).catch((err) => {
     genStatus.textContent = `error: ${err}`;
-    genOutput.classList.remove("live");
+    genOutput.classList.remove("boiling");
     genBtn.disabled = false;
   });
 });

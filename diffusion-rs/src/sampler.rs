@@ -66,6 +66,8 @@ pub fn generate(
     score_temp: f64,
     preview_every: usize,
     on_preview: &mut dyn FnMut(usize, usize, &Tensor),
+    prefix_emb: Option<&Tensor>, // [n, prefix_len, embed_dim] f64 CPU
+    prefix_len: usize,
     noise: &mut NoiseFn,
 ) -> candle_core::Result<Tensor> {
     let embed_dim = model.embed_dim();
@@ -88,6 +90,18 @@ pub fn generate(
         let a2t = sigmoid(-gamma_t_val);
         let at = a2t.sqrt();
         let st = sigmoid(gamma_t_val).sqrt();
+
+        // Prefix inpainting: clamp the leading positions to the prompt
+        // embeddings re-noised to this step's level, so the model crystallizes
+        // around a fixed prompt.  z_prefix = α_t·emb + σ_t·noise
+        if let (Some(pe), true) = (prefix_emb, prefix_len > 0) {
+            let alpha_t = a2t.sqrt();
+            let sigma_t = (1.0 - a2t).sqrt();
+            let pnoise = noise(&[n_samples, prefix_len, embed_dim])?;
+            let clamp = ((pe * alpha_t)? + (pnoise * sigma_t)?)?;
+            let rest = z.narrow(1, prefix_len, seq_len - prefix_len)?;
+            z = Tensor::cat(&[&clamp, &rest], 1)?;
+        }
 
         // model forward (device, f32)
         let zf = z.to_dtype(DType::F32)?.to_device(&dev)?;

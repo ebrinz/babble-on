@@ -66,13 +66,37 @@ impl Engine {
         Ok(Engine { model, sched, gamma_0, gamma_1, tokenizer, device_label })
     }
 
-    fn decode(&self, ids: &[u32]) -> String {
-        self.tokenizer.decode(ids, false).unwrap_or_default()
+    /// Decode each token id to its surface string (per-position), so the UI can
+    /// diff positions across denoise steps.
+    fn per_token(&self, ids: &[u32]) -> Vec<String> {
+        ids.iter()
+            .map(|&id| self.tokenizer.decode(&[id], false).unwrap_or_default())
+            .collect()
     }
 
-    /// Generate one sample. `entropy` (if given) seeds the initial latent z1.
-    /// `on_step(i, total, partial_text)` fires every `preview_every` steps with
-    /// the current best-guess decode. Returns the final text.
+    /// Build the prompt prefix embeddings [1, k, embed_dim] (f64 CPU) and length.
+    fn prefix(&self, prompt: Option<&str>, seq_len: usize) -> Result<(Option<Tensor>, usize)> {
+        let Some(p) = prompt.map(str::trim).filter(|p| !p.is_empty()) else {
+            return Ok((None, 0));
+        };
+        let enc = self.tokenizer.encode(p, false).map_err(anyhow::Error::msg)?;
+        let ids = enc.get_ids();
+        // Cap the prefix to half the sequence so there's room to generate.
+        let k = ids.len().min(seq_len / 2);
+        if k == 0 {
+            return Ok((None, 0));
+        }
+        let ids_t = Tensor::from_vec(ids[..k].to_vec(), k, &Device::Cpu)?;
+        let emb = self.model.embedding().to_device(&Device::Cpu)?.to_dtype(DType::F64)?;
+        let pe = emb.index_select(&ids_t, 0)?.reshape((1, k, self.model.embed_dim()))?;
+        Ok((Some(pe), k))
+    }
+
+    /// Generate one sample. `entropy` (if given) seeds the initial latent z1;
+    /// `prompt` (if given) is inpainted at the prefix. `on_step(i, total,
+    /// per_position_tokens)` fires every `preview_every` steps. Returns the
+    /// final per-position tokens.
+    #[allow(clippy::too_many_arguments)]
     pub fn generate(
         &self,
         steps: usize,
@@ -80,8 +104,11 @@ impl Engine {
         score_temp: f64,
         preview_every: usize,
         entropy: Option<&[u8]>,
-        mut on_step: impl FnMut(usize, usize, String),
-    ) -> Result<String> {
+        prompt: Option<&str>,
+        mut on_step: impl FnMut(usize, usize, Vec<String>),
+    ) -> Result<Vec<String>> {
+        let (prefix_emb, prefix_len) = self.prefix(prompt, seq_len)?;
+
         let entropy_vec = entropy.map(|e| e.to_vec());
         let mut first = true;
         let mut noise = |shape: &[usize]| -> candle_core::Result<Tensor> {
@@ -101,15 +128,15 @@ impl Engine {
                 .and_then(|t| t.to_device(&Device::Cpu))
                 .and_then(|t| t.to_vec1::<u32>());
             if let Ok(ids) = decoded {
-                on_step(i, total, self.decode(&ids));
+                on_step(i, total, self.per_token(&ids));
             }
         };
 
         let ids = sampler::generate(
             &self.model, &self.sched, self.gamma_0, self.gamma_1, 1, seq_len, steps,
-            score_temp, preview_every, &mut on_preview, &mut noise,
+            score_temp, preview_every, &mut on_preview, prefix_emb.as_ref(), prefix_len, &mut noise,
         )?;
         let row: Vec<u32> = ids.i(0)?.to_vec1()?;
-        Ok(self.decode(&row))
+        Ok(self.per_token(&row))
     }
 }
