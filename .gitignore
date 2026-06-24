@@ -11,3 +11,5 @@ dist
 .venv
 **/__pycache__/
 *.pyc
+src-tauri/build.log
+**/build.log

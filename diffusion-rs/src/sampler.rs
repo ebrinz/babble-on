@@ -64,6 +64,8 @@ pub fn generate(
     seq_len: usize,
     steps: usize,
     score_temp: f64,
+    preview_every: usize,
+    on_preview: &mut dyn FnMut(usize, usize, &Tensor),
     noise: &mut NoiseFn,
 ) -> candle_core::Result<Tensor> {
     let embed_dim = model.embed_dim();
@@ -90,8 +92,11 @@ pub fn generate(
         // model forward (device, f32)
         let zf = z.to_dtype(DType::F32)?.to_device(&dev)?;
         let gamma_vec = Tensor::from_vec(vec![gamma_t_val as f32; n_samples], n_samples, &dev)?;
-        let (_logits, x_reconst) = model.forward(&zf, &gamma_vec, &x_selfcond)?;
+        let (logits, x_reconst) = model.forward(&zf, &gamma_vec, &x_selfcond)?;
         x_selfcond = x_reconst.clone();
+        if preview_every > 0 && i > 0 && i % preview_every == 0 {
+            on_preview(i, steps, &logits);
+        }
         let xr = x_reconst.to_device(&cpu)?.to_dtype(DType::F64)?;
 
         // eps = (z - at*xr)/st/score_temp ; xr = (z - st*eps)/at
