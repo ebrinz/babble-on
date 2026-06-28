@@ -44,6 +44,9 @@ fn generate(
     steps: Option<usize>,
     seq_len: Option<usize>,
     n_samples: Option<usize>,
+    temperature: Option<f64>,
+    noise_scale: Option<f64>,
+    ddim: Option<bool>,
     prompt: Option<String>,
     app: tauri::AppHandle,
     ctrl: tauri::State<Control>,
@@ -52,6 +55,9 @@ fn generate(
     let steps = steps.unwrap_or(256);
     let seq_len = seq_len.unwrap_or(256);
     let n_samples = n_samples.unwrap_or(1);
+    let temperature = temperature.unwrap_or(0.9);
+    let noise_scale = noise_scale.unwrap_or(1.0);
+    let ddim = ddim.unwrap_or(false);
 
     if !diff.try_acquire() {
         return Err("a generation is already in progress".into());
@@ -70,7 +76,7 @@ fn generate(
     let app2 = app.clone();
     let diff2: Arc<Diffusion> = diff.inner().clone();
     std::thread::spawn(move || {
-        if let Err(e) = run_generation(&app2, &diff2, steps, seq_len, n_samples, prompt, entropy) {
+        if let Err(e) = run_generation(&app2, &diff2, steps, seq_len, n_samples, temperature, noise_scale, ddim, prompt, entropy) {
             let _ = app2.emit("diffusion", serde_json::json!({"type": "error", "message": e}));
         }
         diff2.release();

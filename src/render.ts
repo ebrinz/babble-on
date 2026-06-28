@@ -120,11 +120,18 @@ export function drawHistogram(ctx: CanvasRenderingContext2D, dto: Dto, w: number
 
 export function drawBitstream(ctx: CanvasRenderingContext2D, dto: Dto, w: number, h: number) {
   ctx.clearRect(0, 0, w, h);
-  const bytes: number[] = dto.recent;
-  const cols = Math.floor(w / 6);
-  bytes.slice(-cols * 8).forEach((b, i) => {
-    const x = (i % cols) * 6, y = Math.floor(i / cols) * 6;
+  const bytes: number[] = dto.recent || [];
+  const n = bytes.length;
+  if (n === 0) return;
+  // Lay the recent bytes out as a grid sized to fill the whole panel: pick a
+  // column count whose aspect ratio matches the panel, then size cells to fit.
+  const cols = Math.max(1, Math.round(Math.sqrt((n * w) / h)));
+  const rows = Math.ceil(n / cols);
+  const s = Math.min(w / cols, h / rows);
+  const gap = s > 4 ? 1 : 0;
+  bytes.forEach((b, i) => {
+    const x = (i % cols) * s, y = Math.floor(i / cols) * s;
     ctx.fillStyle = `hsl(${(b / 255) * 360}, 70%, 55%)`;
-    ctx.fillRect(x, y, 5, 5);
+    ctx.fillRect(x, y, s - gap, s - gap);
   });
 }

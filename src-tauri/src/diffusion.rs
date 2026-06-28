@@ -52,6 +52,9 @@ pub fn run_generation(
     steps: usize,
     seq_len: usize,
     _n_samples: usize, // the candle engine generates a single sample
+    temperature: f64,
+    noise_scale: f64,
+    ddim: bool,
     prompt: Option<String>,
     entropy: Vec<u8>,
 ) -> Result<(), String> {
@@ -70,7 +73,7 @@ pub fn run_generation(
 
     let t0 = std::time::Instant::now();
     let tokens = eng
-        .generate(steps, seq_len, 0.9, preview_every, entropy_opt, prompt.as_deref(), |i, total, toks| {
+        .generate(steps, seq_len, temperature, noise_scale, ddim, preview_every, entropy_opt, prompt.as_deref(), |i, total, toks| {
             let _ = app.emit("diffusion", json!({"type": "step", "i": i, "total": total, "tokens": toks}));
         })
         .map_err(|e| format!("generate: {e}"))?;

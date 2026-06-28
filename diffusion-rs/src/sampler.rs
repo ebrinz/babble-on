@@ -64,6 +64,8 @@ pub fn generate(
     seq_len: usize,
     steps: usize,
     score_temp: f64,
+    initial_noise_scale: f64,
+    ddim: bool,
     preview_every: usize,
     on_preview: &mut dyn FnMut(usize, usize, &Tensor),
     prefix_emb: Option<&Tensor>, // [n, prefix_len, embed_dim] f64 CPU
@@ -75,7 +77,7 @@ pub fn generate(
     let cpu = Device::Cpu;
     let shape = [n_samples, seq_len, embed_dim];
 
-    let mut z = noise(&shape)?; // f64 CPU
+    let mut z = (noise(&shape)? * initial_noise_scale)?; // f64 CPU
     let mut x_selfcond = Tensor::zeros((n_samples, seq_len, embed_dim), DType::F32, &dev)?;
 
     let g = |frac: f64| gamma_0 + (gamma_1 - gamma_0) * sched.at(frac);
@@ -118,12 +120,21 @@ pub fn generate(
         let xr = ((&z - (&eps * st)?)? * (1.0 / at))?;
 
         if t > 0.0 {
-            let c = -((gamma_s - gamma_t_val).exp() - 1.0); // -expm1(gamma_s-gamma_t)
-            let coef1 = (1.0 - c) * a2s.sqrt() / a2t.sqrt();
-            let coef2 = c * a2s.sqrt();
-            let coef3 = (c * (1.0 - a2s)).sqrt();
-            let nz = noise(&shape)?;
-            z = (((&z * coef1)? + (&xr * coef2)?)? + (&nz * coef3)?)?;
+            if ddim {
+                // Deterministic DDIM step: no fresh noise, so (absent a prompt)
+                // the whole trajectory is fixed by the initial latent z1.
+                let alpha_s = a2s.sqrt();
+                let sigma_s = (1.0 - a2s).sqrt();
+                z = ((&xr * alpha_s)? + (&eps * sigma_s)?)?;
+            } else {
+                // Ancestral step: inject fresh Gaussian noise each step.
+                let c = -((gamma_s - gamma_t_val).exp() - 1.0); // -expm1(gamma_s-gamma_t)
+                let coef1 = (1.0 - c) * a2s.sqrt() / a2t.sqrt();
+                let coef2 = c * a2s.sqrt();
+                let coef3 = (c * (1.0 - a2s)).sqrt();
+                let nz = noise(&shape)?;
+                z = (((&z * coef1)? + (&xr * coef2)?)? + (&nz * coef3)?)?;
+            }
         }
     }
 

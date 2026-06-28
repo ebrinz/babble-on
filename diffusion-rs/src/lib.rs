@@ -102,6 +102,8 @@ impl Engine {
         steps: usize,
         seq_len: usize,
         score_temp: f64,
+        initial_noise_scale: f64,
+        ddim: bool,
         preview_every: usize,
         entropy: Option<&[u8]>,
         prompt: Option<&str>,
@@ -134,7 +136,8 @@ impl Engine {
 
         let ids = sampler::generate(
             &self.model, &self.sched, self.gamma_0, self.gamma_1, 1, seq_len, steps,
-            score_temp, preview_every, &mut on_preview, prefix_emb.as_ref(), prefix_len, &mut noise,
+            score_temp, initial_noise_scale, ddim, preview_every, &mut on_preview,
+            prefix_emb.as_ref(), prefix_len, &mut noise,
         )?;
         let row: Vec<u32> = ids.i(0)?.to_vec1()?;
         Ok(self.per_token(&row))

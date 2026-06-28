@@ -91,6 +91,13 @@ const genBtn = document.getElementById("gen-btn") as HTMLButtonElement;
 const genStatus = document.getElementById("gen-status")!;
 const genOutput = document.getElementById("gen-output")!;
 const promptInput = document.getElementById("prompt") as HTMLInputElement;
+const tempInput = document.getElementById("gen-temp") as HTMLInputElement;
+const noiseInput = document.getElementById("gen-noise") as HTMLInputElement;
+const ddimInput = document.getElementById("gen-ddim") as HTMLInputElement;
+const tempVal = document.getElementById("gen-temp-val")!;
+const noiseVal = document.getElementById("gen-noise-val")!;
+tempInput.addEventListener("input", () => (tempVal.textContent = (+tempInput.value).toFixed(2)));
+noiseInput.addEventListener("input", () => (noiseVal.textContent = (+noiseInput.value).toFixed(2)));
 
 const escape = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -147,7 +154,12 @@ genBtn.addEventListener("click", () => {
   genOutput.innerHTML = "";
   crystalTokens = [];
   crystalHeat = [];
-  invoke("generate", { steps, seqLen, nSamples: 1, prompt }).catch((err) => {
+  invoke("generate", {
+    steps, seqLen, nSamples: 1, prompt,
+    temperature: +tempInput.value,
+    noiseScale: +noiseInput.value,
+    ddim: ddimInput.checked,
+  }).catch((err) => {
     genStatus.textContent = `error: ${err}`;
     genOutput.classList.remove("boiling");
     genBtn.disabled = false;

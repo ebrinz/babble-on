@@ -4,15 +4,19 @@ body { margin:0; background:var(--bg); color:var(--turq); font:14px ui-monospace
 main { height:100vh; display:flex; flex-direction:column; }
 header { display:flex; gap:12px; align-items:center; padding:8px 12px; border-bottom:1px solid #1d2422; }
 header select, header button { background:#111614; color:var(--turq); border:1px solid #243029; padding:4px 8px; font:inherit; }
-.grid { flex:1; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:10px; padding:10px; }
+/* Analytics strip on top, short metrics strip on the bottom, and the diffusion
+   output as the flexible centerpiece that absorbs all remaining height. */
+.toprow { display:grid; grid-template-columns:1.2fr 1fr 1.4fr; gap:10px; padding:10px 10px 0; height:210px; }
+.botrow { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:0 10px 10px; height:120px; }
 .panel { border:1px solid #1d2422; border-radius:6px; padding:8px; display:flex; flex-direction:column; min-height:0; }
 .panel h2 { margin:0 0 6px; font-size:12px; color:var(--gold); font-weight:600; }
 .panel canvas { flex:1; width:100%; min-height:0; }
 #metrics { list-style:none; margin:0; padding:0; }
 #metrics li { padding:3px 0; }
 
-/* Diffusion pane — entropy-seeded text crystallizing from noise. The centerpiece. */
-.gen { height:340px; margin:0 10px 10px; }
+/* Diffusion pane — entropy-seeded text crystallizing from noise. The centerpiece:
+   flex:1 so it absorbs all the height between the top and bottom strips. */
+.gen { flex:1; min-height:0; margin:10px; }
 .gen-controls { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
 .gen-controls input { flex:1; background:#111614; color:var(--turq); border:1px solid #243029; padding:5px 8px; font:inherit; }
 .gen-controls input:disabled { opacity:0.45; }
@@ -20,6 +24,11 @@ header select, header button { background:#111614; color:var(--turq); border:1px
 .gen-controls button { background:#15201c; color:var(--gold); border:1px solid #2a3a32; padding:5px 16px; font:inherit; cursor:pointer; }
 .gen-controls button:disabled { opacity:0.5; cursor:default; }
 #gen-status { color:#7a8a85; font-size:12px; margin-left:auto; }
+.gen-params { display:flex; gap:18px; align-items:center; margin-bottom:8px; font-size:12px; color:#9fb0ab; }
+.gen-params label { display:flex; align-items:center; gap:6px; }
+.gen-params input[type=range] { width:90px; accent-color:var(--gold); }
+.gen-params .check input { accent-color:var(--gold); }
+.gen-params label > span { color:var(--turq); min-width:30px; }
 .gen-output { flex:1; overflow-y:auto; min-height:0; white-space:pre-wrap; line-height:1.7; font-size:17px; letter-spacing:0.1px; }
 .gen-output .tok { transition:color 0.25s linear; border-radius:2px; }
 /* changed-this-step token: a gold glow that fades, so you see the text edit itself in place */
@@ -31,8 +40,7 @@ header select, header button { background:#111614; color:var(--turq); border:1px
 .gen-output.boiling::after { content:"▋"; color:var(--gold); animation:blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity:0; } }
 
-/* Anomaly log — a fixed-height strip below the 2×2 grid. */
-.log { height:150px; margin:0 10px 10px; }
+/* Anomaly log — now a panel in the top analytics strip. */
 #anomalies { flex:1; overflow-y:auto; min-height:0; font-size:13px; }
 #anomalies .empty { color:#5a6b66; padding:4px 2px; }
 .anom { display:grid; grid-template-columns:96px 110px 64px 1fr; gap:10px; align-items:baseline;

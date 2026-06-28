@@ -71,7 +71,9 @@ fn generate(steps: usize, seq_len: usize, prompt: Option<String>) -> Result<()> 
     let tokens = eng.generate(
         steps,
         seq_len,
-        0.9,
+        0.9,   // score_temp
+        1.0,   // initial_noise_scale
+        false, // ddim
         (steps / 12).max(1),
         None,
         prompt.as_deref(),
