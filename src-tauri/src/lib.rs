@@ -7,6 +7,7 @@ use diffusion::{Diffusion, run_generation, EMBED_DIM};
 
 mod math;
 mod stats;
+mod bank;
 mod source;
 mod dto;
 mod engine;
