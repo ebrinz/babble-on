@@ -28,6 +28,9 @@ pub struct SnapshotDto {
     pub anomalies: Vec<AnomalyDto>,
     pub label: String,
     pub status: String,
+    /// Anomaly-bank fill state (bytes), stamped by the engine each tick.
+    pub bank_fill: usize,
+    pub bank_capacity: usize,
 }
 
 fn nz(x: f64) -> Option<f64> { if x.is_finite() { Some(x) } else { None } }
@@ -64,6 +67,8 @@ impl SnapshotDto {
                 duration_secs: a.duration_secs, ongoing: a.ongoing,
             }).collect(),
             label, status,
+            bank_fill: 0,
+            bank_capacity: 0,
         }
     }
 }

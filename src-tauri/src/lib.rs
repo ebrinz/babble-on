@@ -2,11 +2,12 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::Emitter;
-use engine::{Engine, ControlMsg, resolve_kind};
+use engine::{Engine, ControlMsg, SeedReply, resolve_kind};
 use diffusion::{Diffusion, run_generation, EMBED_DIM};
 
 mod math;
 mod stats;
+mod bank;
 mod source;
 mod dto;
 mod engine;
@@ -63,20 +64,24 @@ fn generate(
         return Err("a generation is already in progress".into());
     }
 
-    // Pull the most recent stream bytes to seed the initial latent z1.
+    // Seed bytes for the initial latent: anomaly bank first, live-stream top-up.
     let need = n_samples * seq_len * EMBED_DIM * 4;
-    let (etx, erx) = channel::<Vec<u8>>();
+    let (etx, erx) = channel::<SeedReply>();
     let _ = ctrl
         .0
         .lock()
         .unwrap_or_else(|e| e.into_inner())
-        .send(ControlMsg::GetEntropy(need, etx));
-    let entropy = erx.recv_timeout(Duration::from_secs(2)).unwrap_or_default();
+        .send(ControlMsg::GetSeed(need, etx));
+    let seed = erx.recv_timeout(Duration::from_secs(2)).unwrap_or(SeedReply {
+        bytes: Vec::new(),
+        bank_fraction: 0.0,
+        tags: Vec::new(),
+    });
 
     let app2 = app.clone();
     let diff2: Arc<Diffusion> = diff.inner().clone();
     std::thread::spawn(move || {
-        if let Err(e) = run_generation(&app2, &diff2, steps, seq_len, n_samples, temperature, noise_scale, ddim, prompt, entropy) {
+        if let Err(e) = run_generation(&app2, &diff2, steps, seq_len, n_samples, temperature, noise_scale, ddim, prompt, seed) {
             let _ = app2.emit("diffusion", serde_json::json!({"type": "error", "message": e}));
         }
         diff2.release();

@@ -9,6 +9,7 @@ use std::sync::Mutex;
 use diffusion_rs::Engine;
 use serde_json::json;
 use tauri::{AppHandle, Emitter};
+use crate::engine::SeedReply;
 
 /// Plaid's token-embedding dim; the initial latent is `seq_len * EMBED_DIM`
 /// Gaussians, 4 entropy bytes each.
@@ -56,7 +57,7 @@ pub fn run_generation(
     noise_scale: f64,
     ddim: bool,
     prompt: Option<String>,
-    entropy: Vec<u8>,
+    seed: SeedReply,
 ) -> Result<(), String> {
     let mut guard = diffusion.engine.lock().unwrap_or_else(|e| e.into_inner());
     if guard.is_none() {
@@ -67,7 +68,13 @@ pub fn run_generation(
     }
     let eng = guard.as_ref().unwrap();
 
+    let _ = app.emit(
+        "diffusion",
+        json!({"type": "seeded", "bank_fraction": seed.bank_fraction, "tags": seed.tags}),
+    );
+
     let need = seq_len * EMBED_DIM * 4;
+    let entropy = seed.bytes;
     let entropy_opt = if entropy.len() >= need { Some(&entropy[..need]) } else { None };
     let preview_every = (steps / 24).max(1); // dense cadence for a smooth "boil"
 
