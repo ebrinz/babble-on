@@ -91,6 +91,7 @@ const MODES: Record<string, { steps: number; seqLen: number }> = {
   fast: { steps: 48, seqLen: 96 },
   balanced: { steps: 192, seqLen: 256 },
   quality: { steps: 384, seqLen: 256 },
+  ultra: { steps: 768, seqLen: 256 },
 };
 
 const genBtn = document.getElementById("gen-btn") as HTMLButtonElement;
