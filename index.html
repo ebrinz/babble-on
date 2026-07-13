@@ -24,7 +24,12 @@
       <section class="toprow">
         <div class="panel"><h2>Coherence</h2><canvas id="coherence"></canvas></div>
         <div class="panel"><h2>Randomness</h2><ul id="metrics"></ul></div>
-        <div class="panel log"><h2>Anomaly log · band excursions</h2><div id="anomalies"></div></div>
+        <div class="panel log"><h2>Anomaly log · band excursions</h2>
+          <div class="bank" title="entropy harvested while the walk is out-of-band; spent to seed generations">
+            <div class="bank-meter"><div id="bank-fill"></div></div>
+            <span id="bank-label">bank —</span>
+          </div>
+          <div id="anomalies"></div></div>
       </section>
       <section class="panel gen">
         <h2>Diffusion · text crystallizing from hardware entropy</h2>
@@ -46,6 +51,7 @@
             <span id="gen-noise-val">1.00</span></label>
           <label class="check"><input id="gen-ddim" type="checkbox" /> DDIM · deterministic (z₁ alone)</label>
         </div>
+        <div id="gen-seed" class="gen-seed"></div>
         <div id="gen-output" class="gen-output"></div>
       </section>
       <section class="botrow">

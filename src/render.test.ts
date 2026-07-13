@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { envelopePoints, bandColor, verdictColor, crystallize, heatColor } from "./render";
+import { envelopePoints, bandColor, verdictColor, crystallize, heatColor, seedStamp } from "./render";
 
 describe("render helpers", () => {
   it("envelope is the parabola z*sqrt(k)", () => {
@@ -22,5 +22,18 @@ describe("render helpers", () => {
   it("heat color is gold when just changed, turquoise once settled", () => {
     expect(heatColor(0)).toBe("rgb(242,193,78)"); // GOLD
     expect(heatColor(6)).toBe("rgb(108,240,208)"); // TURQUOISE
+  });
+  it("seed stamp: live stream when nothing came from the bank", () => {
+    expect(seedStamp(0, [], (s) => `T${s}`)).toBe("seed: live stream");
+  });
+  it("seed stamp: bank fraction with signed sigma per anomaly", () => {
+    const fmt = (s: number) => `T${s}`;
+    const tags = [
+      { at_secs: 10, peak_sigma: 3.21, band: "99%" },
+      { at_secs: 40, peak_sigma: -2.84, band: "95%" },
+    ];
+    expect(seedStamp(0.72, tags, fmt)).toBe(
+      "seed: 72% anomaly bank — +3.2σ @ T10, −2.8σ @ T40",
+    );
   });
 });

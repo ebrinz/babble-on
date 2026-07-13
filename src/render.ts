@@ -58,6 +58,22 @@ export function heatColor(h: number): string {
   return lerpColor(GOLD, TURQUOISE, Math.min(h, 6) / 6);
 }
 
+/** Provenance stamp for a generation's seed, e.g.
+ *  "seed: 72% anomaly bank — +3.2σ @ 14:32, −2.8σ @ 15:01". */
+export function seedStamp(
+  bankFraction: number,
+  tags: { at_secs: number; peak_sigma: number; band: string }[],
+  fmtTime: (s: number) => string,
+): string {
+  if (bankFraction <= 0 || !tags.length) return "seed: live stream";
+  const pct = Math.round(bankFraction * 100);
+  const parts = tags.map((t) => {
+    const sign = t.peak_sigma >= 0 ? "+" : "−";
+    return `${sign}${Math.abs(t.peak_sigma).toFixed(1)}σ @ ${fmtTime(t.at_secs)}`;
+  });
+  return `seed: ${pct}% anomaly bank — ${parts.join(", ")}`;
+}
+
 // --- Canvas painters (not unit-tested; verified manually in Task 8) ---
 type Dto = any;
 

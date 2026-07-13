@@ -50,3 +50,10 @@ header select, header button { background:#111614; color:var(--turq); border:1px
 .anom .band { font-weight:600; }
 .anom .dur { color:#7a8a85; }
 .anom .live { color:var(--gold); }
+
+/* Anomaly bank: gold reservoir of out-of-band entropy, spent to seed latents */
+.bank { display:flex; align-items:center; gap:8px; margin:0 0 6px; }
+.bank-meter { flex:1; height:8px; background:#111614; border:1px solid #243029; border-radius:4px; overflow:hidden; }
+#bank-fill { height:100%; width:0%; background:var(--gold); transition:width 0.3s; }
+#bank-label { font-size:11px; color:var(--gold); white-space:nowrap; }
+.gen-seed { font-size:11px; color:var(--gold); margin-bottom:6px; min-height:14px; }

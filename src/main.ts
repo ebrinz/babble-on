@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor, crystallize, heatColor } from "./render";
+import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor, crystallize, heatColor, seedStamp } from "./render";
 import "./style.css";
 
 function canvas(id: string): [CanvasRenderingContext2D, number, number] {
@@ -70,6 +70,12 @@ listen<any>("snapshot", (e) => {
   ).join("");
 
   renderAnomalies(dto.anomalies || []);
+
+  const cap = dto.bank_capacity || 0;
+  const pct = cap ? (dto.bank_fill / cap) * 100 : 0;
+  (document.getElementById("bank-fill") as HTMLElement).style.width = `${pct.toFixed(1)}%`;
+  document.getElementById("bank-label")!.textContent =
+    `bank ${(dto.bank_fill / 1024).toFixed(1)}/${(cap / 1024).toFixed(0)} KiB`;
 });
 
 document.getElementById("source")!.addEventListener("change", (ev) =>
@@ -141,6 +147,10 @@ listen<any>("diffusion", (e) => {
       genOutput.classList.remove("boiling");
       genBtn.disabled = false;
       break;
+    case "seeded":
+      document.getElementById("gen-seed")!.textContent =
+        seedStamp(m.bank_fraction, m.tags || [], fmtClock);
+      break;
   }
 });
 
@@ -152,6 +162,7 @@ genBtn.addEventListener("click", () => {
   genStatus.textContent = "seeding from entropy…";
   genOutput.classList.add("boiling");
   genOutput.innerHTML = "";
+  document.getElementById("gen-seed")!.textContent = "";
   crystalTokens = [];
   crystalHeat = [];
   invoke("generate", {
