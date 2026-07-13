@@ -157,8 +157,7 @@ mod tests {
     #[test]
     fn get_seed_prefers_bank_and_tops_up_live() {
         let mut e = Engine::new(SourceKind::Simulate);
-        std::thread::sleep(Duration::from_millis(120));
-        e.tick(); // accumulate live bytes for the top-up
+        e.stats.push(&[1, 2, 3, 4]); // deterministic live bytes for the top-up
         e.bank.deposit(&[9, 9, 9, 9], ProvenanceTag { at_secs: 1.0, peak_sigma: 2.5, band: "95%" });
 
         let (tx, rx) = std::sync::mpsc::channel();
