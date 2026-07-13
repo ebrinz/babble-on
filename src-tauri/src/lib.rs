@@ -77,12 +77,11 @@ fn generate(
         bank_fraction: 0.0,
         tags: Vec::new(),
     });
-    let entropy = seed.bytes;
 
     let app2 = app.clone();
     let diff2: Arc<Diffusion> = diff.inner().clone();
     std::thread::spawn(move || {
-        if let Err(e) = run_generation(&app2, &diff2, steps, seq_len, n_samples, temperature, noise_scale, ddim, prompt, entropy) {
+        if let Err(e) = run_generation(&app2, &diff2, steps, seq_len, n_samples, temperature, noise_scale, ddim, prompt, seed) {
             let _ = app2.emit("diffusion", serde_json::json!({"type": "error", "message": e}));
         }
         diff2.release();
