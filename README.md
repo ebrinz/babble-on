@@ -83,7 +83,7 @@ The **pause** button freezes accumulation without discarding state; **reset** cl
 
 | Panel | Description |
 |-------|-------------|
-| **Coherence walk** | Cumulative signed sum of bits (±1 per bit). The gold envelope is the expected 2σ band; a healthy source wanders inside it. A biased source bolts out. The chart grows from the session origin for the first ~2 minutes, then becomes a rolling 2-minute window so the scale stays constant instead of compressing forever. |
+| **Coherence walk** | Cumulative signed sum of bits (±1 per bit). The gold envelope is the expected 2σ band; a healthy source wanders inside it. A biased source bolts out. The envelope funnel stays anchored on screen — the vertex is pinned at the left and the whole session compresses into it, so only the line moves. |
 | **NIST metrics list** | Shannon entropy, min-entropy, NIST monobit, chi-square, and serial correlation — each with a PASS / FAIL verdict and colour. |
 | **Byte histogram** | 256-bar frequency distribution. A flat histogram indicates uniform byte output. |
 | **Bitstream ribbon** | Live 0/1 tile strip; green = 1, dark = 0. |
@@ -109,7 +109,6 @@ Because this README is authored by a headless CI agent, the following end-to-end
 1. Run `npm run tauri dev` with source set to **simulate** → metrics should be green within ~2 s.  
 2. Switch to **bad rng** → verdicts turn red and the coherence walk escapes the gold band.  
 3. Switch to **auto** with a TrueRNG plugged in → the status label shows the `/dev/cu.usbmodem*` device path; without hardware it shows `simulate`.
-4. Leave **simulate** running past 2 minutes → the coherence chart starts scrolling at a fixed scale instead of compressing.
 
 ## Anomaly bank smoke (user-run)
 
@@ -128,7 +127,7 @@ Also user-run, for the same reason as above:
 | `npm run build` (vite) | ✓ pass |
 | `cargo build --release` | ✓ pass |
 | `cargo test` | ✓ 27/27 pass |
-| `npm run test` (vitest) | ✓ 8/8 pass |
+| `npm run test` (vitest) | ✓ 6/6 pass |
 | Visual 3-state smoke | **user-run** (see above) |
 | Anomaly bank smoke | **user-run** (see above) |
 

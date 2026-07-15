@@ -5,8 +5,8 @@
 //! an incrementally-updated 256-bin histogram and a running popcount. Each
 //! frame the UI calls [`Stats::snapshot`] to compute the derived metrics.
 //!
-//! Ported from ghostty-rng (the coherence walk diverges: it keeps a rolling
-//! window — see `roll_walk` — so arbitrarily long sessions stay bounded).
+//! Ported from ghostty-rng (the coherence walk diverges: it uses adaptive
+//! downsampling — see `thin_walk` — so arbitrarily long sessions stay bounded).
 //! The audit buffer (`audit_len`/`audit_sample`) and anomaly bell
 //! (`take_alert`) are consumed by features wired up in a later plan, so they
 //! are intentionally unused in this build.
@@ -26,11 +26,6 @@ pub const Z999: f64 = 3.290_526_73;
 /// the random walk readable regardless of how fast the device streams.
 const TRIAL_INTERVAL: Duration = Duration::from_millis(100);
 const TRIAL_MIN_BITS: u64 = 2048;
-
-/// How many trials the coherence chart retains — the rolling window width.
-/// ~2 minutes at one trial per TRIAL_INTERVAL. Must match WALK_WINDOW in
-/// src/render.ts, which uses it to fix the chart's x-domain.
-pub const WALK_WINDOW: u64 = 1200;
 
 /// Rolling buffer kept for the in-TUI authenticity audit (press `a`).
 const AUDIT_CAP: usize = 2 * 1024 * 1024;
@@ -162,6 +157,7 @@ pub struct Stats {
     cum: f64,          // cumulative sum of per-trial z-scores (the walk)
     trial_count: u64,  // k
     walk: VecDeque<(f64, f64)>,
+    walk_budget: usize,
     current_event: Option<AnomalyEvent>,
     events: VecDeque<AnomalyEvent>,
     events_cap: usize,
@@ -191,6 +187,12 @@ impl Stats {
             cum: 0.0,
             trial_count: 0,
             walk: VecDeque::new(),
+            // Point budget for the cumulative-deviation walk. The walk retains
+            // the full session history (the vertex at k≈0 is never dropped) via
+            // adaptive downsampling: when it exceeds the budget it is thinned to
+            // every other point, so older detail coarsens while recent trials
+            // stay crisp. Bounded memory for arbitrarily long sessions.
+            walk_budget: 2500,
             current_event: None,
             events: VecDeque::new(),
             events_cap: 64,
@@ -314,7 +316,7 @@ impl Stats {
 
         let k = self.trial_count as f64;
         self.walk.push_back((k, self.cum));
-        roll_walk(&mut self.walk, WALK_WINDOW as f64);
+        thin_walk(&mut self.walk, self.walk_budget);
 
         // Normalized deviation: σ = C_k / √k  (~N(0,1) under pure randomness).
         let sigma = self.cum / k.sqrt();
@@ -519,18 +521,26 @@ fn band_rank(b: Band) -> u8 {
     }
 }
 
-/// Rolling retention for the cumulative-deviation walk: drop points more than
-/// `window` trials behind the live tip. Once k exceeds the window the chart
-/// scrolls at a constant x-scale instead of compressing the whole session.
-/// Bounds memory (one point per trial in the window), with no loss to the
-/// anomaly log, which records every excursion independently.
-fn roll_walk(walk: &mut VecDeque<(f64, f64)>, window: f64) {
-    let tip = match walk.back() {
-        Some(&(k, _)) => k,
-        None => return,
-    };
-    while matches!(walk.front(), Some(&(k, _)) if k <= tip - window) {
-        walk.pop_front();
+/// Adaptive downsample of the cumulative-deviation walk. When the walk exceeds
+/// `budget`, keep every other point — always retaining the first (the vertex at
+/// k≈0) and the last (the live tip). Each thinning halves the resolution of the
+/// existing span, so the oldest data coarsens fastest while the most recently
+/// pushed trials (thinned the fewest times) stay finest. Bounds memory to
+/// `budget` for sessions of any length, with no loss to the anomaly log, which
+/// records every excursion independently.
+fn thin_walk(walk: &mut VecDeque<(f64, f64)>, budget: usize) {
+    let budget = budget.max(2);
+    while walk.len() > budget {
+        let prev = walk.len();
+        let last = *walk.back().unwrap();
+        let mut kept: VecDeque<(f64, f64)> = walk.iter().step_by(2).copied().collect();
+        if kept.back() != Some(&last) {
+            kept.push_back(last);
+        }
+        *walk = kept;
+        if walk.len() >= prev {
+            break; // safety: cannot shrink further (degenerate tiny budget)
+        }
     }
 }
 
@@ -775,23 +785,24 @@ mod tests {
         assert_eq!(snap.histogram.iter().sum::<u32>(), 1000);
     }
 
-    /// Rolling retention drops points older than the window behind the live
-    /// tip, so the chart's x-scale stays constant once the window is full.
+    /// Thinning bounds the walk to its budget while always keeping the vertex
+    /// (first point) and the live tip (last point), so the horseshoe stays
+    /// anchored and current for arbitrarily long sessions.
     #[test]
-    fn roll_walk_drops_points_older_than_window() {
+    fn thin_walk_bounds_length_and_pins_vertex_and_tip() {
         let mut walk: VecDeque<(f64, f64)> =
-            (1..=2000).map(|k| (k as f64, k as f64 * 0.5)).collect();
-        roll_walk(&mut walk, 1200.0);
-        assert_eq!(walk.len(), 1200);
-        assert_eq!(walk.front(), Some(&(801.0, 400.5)), "oldest kept point");
-        assert_eq!(walk.back(), Some(&(2000.0, 1000.0)), "live tip must be retained");
+            (0..5001).map(|k| (k as f64, k as f64 * 0.5)).collect();
+        thin_walk(&mut walk, 2500);
+        assert!(walk.len() <= 2500, "thinned to {}", walk.len());
+        assert_eq!(walk.front(), Some(&(0.0, 0.0)), "vertex must be retained");
+        assert_eq!(walk.back(), Some(&(5000.0, 2500.0)), "live tip must be retained");
     }
 
     #[test]
-    fn roll_walk_is_identity_within_window() {
-        let mut walk: VecDeque<(f64, f64)> = (1..=100).map(|k| (k as f64, 0.0)).collect();
+    fn thin_walk_is_identity_below_budget() {
+        let mut walk: VecDeque<(f64, f64)> = (0..100).map(|k| (k as f64, 0.0)).collect();
         let before = walk.clone();
-        roll_walk(&mut walk, 1200.0);
+        thin_walk(&mut walk, 2500);
         assert_eq!(walk, before);
     }
 }
