@@ -8,7 +8,8 @@ use std::sync::Mutex;
 
 use diffusion_rs::Engine;
 use serde_json::json;
-use tauri::{AppHandle, Emitter};
+use tauri::path::BaseDirectory;
+use tauri::{AppHandle, Emitter, Manager};
 use crate::engine::SeedReply;
 
 /// Plaid's token-embedding dim; the initial latent is `seq_len * EMBED_DIM`
@@ -22,6 +23,50 @@ fn rel(parts: &[&str]) -> String {
         p.push(part);
     }
     p.to_string_lossy().into_owned()
+}
+
+/// First candidate directory that actually holds the converted model
+/// (`plaid1b.safetensors`), or an error naming every location checked so a
+/// bundled app can tell the user exactly where to put the weights.
+fn resolve_model_dir(candidates: &[PathBuf]) -> Result<PathBuf, String> {
+    for dir in candidates {
+        if dir.join("plaid1b.safetensors").is_file() {
+            return Ok(dir.clone());
+        }
+    }
+    let list = candidates
+        .iter()
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join(" or ");
+    Err(format!(
+        "model not found — put the converted weights (plaid1b.safetensors + meta.json) in {list}; see the README's Text Generation Setup"
+    ))
+}
+
+/// Where the model may live: the dev checkout (running from the repo), then
+/// the per-user app-data dir (running a bundled build).
+fn model_candidates(app: &AppHandle) -> Vec<PathBuf> {
+    let mut v = vec![PathBuf::from(rel(&["models", "plaid1b"]))];
+    if let Ok(data) = app.path().app_data_dir() {
+        v.push(data.join("models").join("plaid1b"));
+    }
+    v
+}
+
+/// The tokenizer ships with the app: dev checkout path first, then the copy
+/// bundled as a Tauri resource.
+fn resolve_tokenizer(app: &AppHandle) -> Result<PathBuf, String> {
+    let dev = PathBuf::from(rel(&["sidecar", "misc", "owt2_tokenizer.json"]));
+    if dev.is_file() {
+        return Ok(dev);
+    }
+    if let Ok(res) = app.path().resolve("owt2_tokenizer.json", BaseDirectory::Resource) {
+        if res.is_file() {
+            return Ok(res);
+        }
+    }
+    Err("bundled tokenizer missing (owt2_tokenizer.json)".into())
 }
 
 pub struct Diffusion {
@@ -62,7 +107,9 @@ pub fn run_generation(
     let mut guard = diffusion.engine.lock().unwrap_or_else(|e| e.into_inner());
     if guard.is_none() {
         let _ = app.emit("diffusion", json!({"type": "loading"}));
-        let eng = Engine::load(&rel(&["models", "plaid1b"]), &rel(&["sidecar", "misc", "owt2_tokenizer.json"]), true)
+        let model_dir = resolve_model_dir(&model_candidates(app))?;
+        let tokenizer = resolve_tokenizer(app)?;
+        let eng = Engine::load(&model_dir.to_string_lossy(), &tokenizer.to_string_lossy(), true)
             .map_err(|e| format!("load model: {e}"))?;
         *guard = Some(eng);
     }
@@ -90,4 +137,34 @@ pub fn run_generation(
         json!({"type": "done", "i": steps, "total": steps, "tokens": tokens, "elapsed": elapsed}),
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolve_model_dir_picks_first_candidate_with_weights() {
+        let tmp = std::env::temp_dir().join("babble-resolve-test");
+        let empty = tmp.join("empty");
+        let stocked = tmp.join("stocked");
+        std::fs::create_dir_all(&empty).unwrap();
+        std::fs::create_dir_all(&stocked).unwrap();
+        std::fs::write(stocked.join("plaid1b.safetensors"), b"x").unwrap();
+
+        let got = resolve_model_dir(&[empty.clone(), stocked.clone()]).unwrap();
+        assert_eq!(got, stocked);
+
+        std::fs::remove_dir_all(&tmp).unwrap();
+    }
+
+    #[test]
+    fn resolve_model_dir_error_names_every_checked_path() {
+        let a = PathBuf::from("/nonexistent/dev/models/plaid1b");
+        let b = PathBuf::from("/nonexistent/appdata/models/plaid1b");
+        let err = resolve_model_dir(&[a, b]).unwrap_err();
+        assert!(err.contains("/nonexistent/dev/models/plaid1b"), "err: {err}");
+        assert!(err.contains("/nonexistent/appdata/models/plaid1b"), "err: {err}");
+        assert!(err.contains("plaid1b.safetensors"), "err: {err}");
+    }
 }
