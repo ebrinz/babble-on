@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { envelopePoints, bandColor, verdictColor, crystallize, heatColor, seedStamp } from "./render";
+import { envelopePoints, bandColor, verdictColor, crystallize, heatColor, seedStamp, walkDomain, WALK_WINDOW } from "./render";
 
 describe("render helpers", () => {
   it("envelope is the parabola z*sqrt(k)", () => {
@@ -25,6 +25,15 @@ describe("render helpers", () => {
   });
   it("seed stamp: live stream when nothing came from the bank", () => {
     expect(seedStamp(0, [], (s) => `T${s}`)).toBe("seed: live stream");
+  });
+  it("walk domain grows from the vertex until the window fills", () => {
+    expect(walkDomain(0)).toEqual([0, 50]); // floor keeps early frames readable
+    expect(walkDomain(400)).toEqual([0, 400]);
+    expect(walkDomain(WALK_WINDOW)).toEqual([0, WALK_WINDOW]);
+  });
+  it("walk domain rolls at fixed width once k exceeds the window", () => {
+    expect(walkDomain(WALK_WINDOW + 1)).toEqual([1, WALK_WINDOW + 1]);
+    expect(walkDomain(5000)).toEqual([5000 - WALK_WINDOW, 5000]);
   });
   it("seed stamp: bank fraction with signed sigma per anomaly", () => {
     const fmt = (s: number) => `T${s}`;

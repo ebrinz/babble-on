@@ -19,6 +19,17 @@ export function verdictColor(v: string): string {
     default: return "#888";
   }
 }
+/** Trials shown by the coherence chart — must match WALK_WINDOW in stats.rs. */
+export const WALK_WINDOW = 1200;
+
+/** Visible x-domain [kLo, kHi] of the coherence chart for a walk tip at kLast.
+ *  Grows from the vertex (as before) until the walk fills the window, then
+ *  rolls at fixed width so the x-scale stops compressing. */
+export function walkDomain(kLast: number): [number, number] {
+  if (kLast <= WALK_WINDOW) return [0, Math.max(50, kLast)];
+  return [kLast - WALK_WINDOW, kLast];
+}
+
 export function envelopePoints(maxK: number, z: number): [number, number][] {
   const pts: [number, number][] = [];
   for (let k = 1; k <= maxK; k++) pts.push([k, z * Math.sqrt(k)]);
@@ -81,25 +92,26 @@ export function drawCoherence(ctx: CanvasRenderingContext2D, dto: Dto, w: number
   ctx.clearRect(0, 0, w, h);
   const walk: [number, number][] = dto.walk || [];
 
-  // X-axis is anchored at the session origin: trial k=0 maps to x=0, so the
-  // significance envelopes converge to a point at the left (the "horseshoe"
-  // vertex) and the walk grows out of it. The walk retains enough history to
-  // reach back to the vertex, so it fills the panel without floating right.
+  // X-axis: anchored at the session origin while the walk fills the window
+  // (envelopes converge to the "horseshoe" vertex at k=0 and the walk grows
+  // out of it), then a fixed-width window that rolls with the live tip so the
+  // chart stops compressing. The backend retains exactly the visible trials.
   const kLast = walk.length ? walk[walk.length - 1][0] : Math.max(50, dto.trial_count || 50);
-  const maxK = Math.max(50, kLast);
-  const sx = (k: number) => (k / maxK) * w;
+  const [kLo, kHi] = walkDomain(kLast);
+  const sx = (k: number) => ((k - kLo) / (kHi - kLo)) * w;
 
-  // Y-axis centered on the mean (C = 0); scaled so the 99.9% envelope just fits.
-  const yMax = Math.max(4, 3.29052673 * Math.sqrt(maxK) * 1.08);
+  // Y-axis centered on the mean (C = 0); scaled so the 99.9% envelope at the
+  // right edge just fits — within a rolling window this drifts only as √k.
+  const yMax = Math.max(4, 3.29052673 * Math.sqrt(kHi) * 1.08);
   const sy = (c: number) => h / 2 - (c / yMax) * (h / 2);
 
-  // Significance envelopes ±z·√k drawn from the vertex (k=0) out to maxK.
+  // Significance envelopes ±z·√k (k absolute) sampled across the visible domain.
   const STEPS = 96;
   for (const [z, color] of [[1.95996398, GOLD], [2.5758293, ORANGE], [3.29052673, RED]] as [number, string][]) {
     for (const sign of [1, -1]) {
       ctx.strokeStyle = color; ctx.globalAlpha = 0.5; ctx.lineWidth = 1; ctx.beginPath();
       for (let i = 0; i <= STEPS; i++) {
-        const k = (maxK * i) / STEPS;
+        const k = kLo + ((kHi - kLo) * i) / STEPS;
         const x = (i / STEPS) * w, y = sy(sign * z * Math.sqrt(k));
         i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       }
