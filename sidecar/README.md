@@ -35,6 +35,20 @@ gh release download v1.0.0 --repo igul222/plaid --pattern 'plaid1b_weights*'
 cat plaid1b_weights.tar.gz.* | tar xzf - && mv plaid1b_weights/* . && rmdir plaid1b_weights
 ```
 
+## Convert for the app
+
+The desktop app's **Generate** button does not use this sidecar — it runs the
+all-Rust candle port (`diffusion-rs/`), which loads
+`models/plaid1b/plaid1b.safetensors` + `meta.json` instead of the raw `.pt`
+checkpoints. Produce them once, after the download above:
+
+```bash
+.venv/bin/python convert.py
+```
+
+The `.pt` files remain required — by the conversion, and by this sidecar when
+run standalone.
+
 ## Protocol
 
 Newline-delimited JSON. **stdout carries only protocol JSON; all logs go to
