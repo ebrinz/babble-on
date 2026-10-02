@@ -41,10 +41,26 @@ uv pip install --python .venv/bin/python -e ".[model]"        # transformers ≥
 .venv/bin/python -m pytest -q                                 # 34 tests, no weights needed
 ```
 
-The model is ~52 GB in bf16 (18 GB at 4-bit through llama.cpp/Unsloth; this
-harness uses Transformers, so plan on a GPU box with ≥ 60 GB or
-`device_map="auto"` offload). `--model stub` runs the whole pipeline on a
-toy denoiser for plumbing checks.
+`--model stub` runs the whole pipeline on a toy denoiser; `--model tiny`
+runs the *real* Transformers adapter on a random-weight DiffusionGemma
+(same classes as the checkpoint, 260k parameters) so every code path the
+26B model will take is exercised without a download.
+
+### Model size and 4-bit
+
+The checkpoint is ~52 GB in bf16. For 4-bit, the paths that keep the
+interpretability hooks (hidden states, router logits) are the Transformers
+ones:
+
+| path | flag | needs | notes |
+|---|---|---|---|
+| NVIDIA NVFP4 checkpoint | `--quant nvfp4` | Blackwell-class GPU with FP4 kernels (~18 GB) | the officially supported 4-bit path |
+| bitsandbytes NF4 | `--quant bnb4` | CUDA GPU (~16 GB) | plain bnb only quantises `nn.Linear`; the MoE experts (≈85 % of the weights) stay bf16 unless Unsloth's per-expert Linear4bit swap is installed. The CLI prints the quantised parameter share after loading — expect > 0.8, not 0.15 |
+| GGUF Q4_K_M via llama.cpp | — | any (~18 GB RAM) | fastest on a Mac, but exposes no hidden states or routing; usable for the sampler only, through a future `llama-cpp-python` denoiser |
+| MLX 4-bit (mlx-vlm ≥ 0.6.3) | — | Apple Silicon | same caveat as GGUF today; an MLX denoiser with hooks is feasible since MLX models are plain Python |
+
+On a 32 GB Mac the realistic route is GGUF/MLX for generation and a rented
+CUDA box for the activation captures.
 
 ## Workflow
 
@@ -96,8 +112,10 @@ spawn it in place of the Plaid engine with the entropy it already draws.
 
 ## Caveats
 
-- `models/diffusion_gemma.py` is written against the Transformers 5.8 source
-  and has not yet been run on hardware; the two likely adjustment points are
-  marked `# ADAPT`. Everything else in the package is covered by tests.
+- `models/diffusion_gemma.py` is validated against the Transformers 5.18
+  classes on a tiny random model (`tests/test_hf_adapter.py`) and
+  step-for-step against the reference `generate` loop with its RNG routed
+  through the tape (`tests/test_reference_parity.py`). It has not yet been
+  run against the real checkpoint or on a GPU.
 - One canvas per sample (256 tokens). Longer, block-autoregressive generation
   is out of scope.

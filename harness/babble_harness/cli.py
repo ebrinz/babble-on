@@ -38,7 +38,7 @@ def main(argv=None) -> int:
 
     p = sub.add_parser("run", help="run conditions × seeds × prompts")
     p.add_argument("out")
-    p.add_argument("--model", default="stub", help="stub | diffusion_gemma")
+    p.add_argument("--model", default="stub", help="stub | tiny | diffusion_gemma")
     p.add_argument("--recording", action="append", default=[], help=".bbrec from the app or record-serial")
     p.add_argument("--remote", action="append", default=[], help=".bbrec from fetch-anu (remote control arm)")
     p.add_argument("--seed-dir", action="append", default=[], help="directory of app-exported *.seed.json bundles")
@@ -49,6 +49,7 @@ def main(argv=None) -> int:
     p.add_argument("--no-activations", action="store_true")
     p.add_argument("--layers", default="6,12,18,24,30", help="decoder layers to capture (diffusion_gemma)")
     p.add_argument("--model-id", default=None)
+    p.add_argument("--quant", default=None, help="none | nvfp4 | bnb4 (diffusion_gemma)")
     _add_sampler_args(p)
 
     p = sub.add_parser("analyze", help="write report.md/.json for a run")
@@ -96,11 +97,17 @@ def main(argv=None) -> int:
         kw = {}
         if a.model == "stub":
             kw = dict(vocab_size=cfg.vocab_size, canvas_length=cfg.canvas_length)
+        elif a.model == "tiny":
+            kw = {}
         else:
             kw = dict(capture_layers=tuple(int(x) for x in a.layers.split(",") if x))
             if a.model_id:
                 kw["model_id"] = a.model_id
+            if a.quant:
+                kw["quant"] = a.quant
         den = load_denoiser(a.model, **kw)
+        if hasattr(den, "quantized_fraction"):
+            log(f"quantized parameter share: {den.quantized_fraction():.2f}")
         if hasattr(den, "canvas_length"):
             cfg.canvas_length, cfg.vocab_size = den.canvas_length, den.vocab_size
         conds = build_conditions(cfg, a.recording, a.remote, a.seed_dir, a.prng, a.max_per_group, a.allow_concat, log=log)

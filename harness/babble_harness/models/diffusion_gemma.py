@@ -1,26 +1,28 @@
-"""Transformers adapter for ``google/diffusiongemma-26B-A4B-it`` with
-interpretability hooks.
+"""Transformers adapter for DiffusionGemma with interpretability hooks.
 
-Written against the Transformers 5.8 ``diffusion_gemma`` module
-(``DiffusionGemmaForBlockDiffusion``: ``model.encoder`` builds the prompt KV
-cache once; ``model.decoder(decoder_input_ids=canvas, past_key_values=cache,
-self_conditioning_logits=prev)`` is one denoising pass; ``lm_head`` + tanh
-softcapping gives logits). The denoising step is reproduced here instead of
-calling ``generate`` so that every random draw comes from the entropy tape.
+Mirrors what `DiffusionGemmaGenerationMixin.generate` does around each
+denoising pass (Transformers 5.18, `generation_diffusion_gemma.py`):
 
-**Not yet validated on hardware** (this container has no GPU and no weights).
-The two places most likely to need a touch when first run are marked
-``# ADAPT``: the encoder call that primes the cache, and the kwarg that
-enables router-logit recording. Everything else is hooks on standard modules.
+  prefill  : model.model.encoder(input_ids, attention_mask, past_key_values=DynamicCache(config), position_ids)
+  per step : model.model.decoder(decoder_input_ids=canvas, past_key_values=cache,
+                                 self_conditioning_logits=prev_processed_logits,
+                                 decoder_attention_mask=pad(mask, canvas, True),
+                                 decoder_position_ids=arange(cur_len, cur_len+L))
+             logits = softcap(lm_head(last_hidden_state))          (as ForBlockDiffusion.forward)
 
-Captured per step (all moved to CPU, float32 / int32):
-  hidden        [n_layers_captured, L, hidden]  residual stream after chosen
-                decoder layers (``output_hidden_states``)
-  router_counts [n_moe_layers, n_experts]       how often each expert was in
-                the top-k across the canvas (from router logits)
-  router_entropy [n_moe_layers]                 entropy of the expert usage
-  logit_lens_agree [n_layers_captured]          share of positions whose
-                top-1 under lm_head(norm(h_layer)) equals the final top-1
+The decoder reads the prefix cache read-only, so one prefill serves every
+step and every sample for the same prompt. Going through the decoder rather
+than the top-level forward is what exposes the recorded router logits.
+
+Validated against a tiny random-weight model in `tests/test_hf_adapter.py`
+and, step for step, against the reference `generate` in
+`tests/test_reference_parity.py`. Not yet run against the real checkpoint.
+
+Captured per step (CPU, float32 / int32):
+  hidden            [n_captured, L, hidden]  residual stream after chosen decoder layers
+  router_counts     [n_moe_layers, n_experts] top-k expert usage across the canvas
+  router_entropy    [n_moe_layers]
+  logit_lens_agree  [n_captured]              top-1 under softcap(lm_head(norm(h))) == final top-1
 """
 from __future__ import annotations
 
@@ -29,108 +31,161 @@ from typing import Any
 import numpy as np
 
 MODEL_ID = "google/diffusiongemma-26B-A4B-it"
+NVFP4_MODEL_ID = "nvidia/diffusiongemma-26B-A4B-it-NVFP4"
 
 
 class DiffusionGemmaDenoiser:
-    def __init__(self, model_id: str = MODEL_ID, prompt: str | None = None, device_map: str = "auto",
-                 dtype: str = "auto", capture_layers: tuple[int, ...] | None = (6, 12, 18, 24, 30),
+    def __init__(self, model, processor=None, capture_layers: tuple[int, ...] | None = (6, 12, 18, 24, 30),
                  capture_router: bool = True, logit_lens: bool = True, system: str | None = None):
         import torch
-        from transformers import AutoProcessor, DiffusionGemmaForBlockDiffusion
 
         self.torch = torch
-        self.processor = AutoProcessor.from_pretrained(model_id)
-        self.model = DiffusionGemmaForBlockDiffusion.from_pretrained(model_id, dtype=dtype, device_map=device_map)
-        self.model.eval()
-        self.cfg = self.model.config
+        self.model = model.eval()
+        self.processor = processor
+        self.cfg = model.config
+        self.text_cfg = self.cfg.text_config
         self.canvas_length = int(self.cfg.canvas_length)
-        self.vocab_size = int(self.cfg.text_config.vocab_size)
-        self.softcap = float(self.cfg.text_config.final_logit_softcapping or 0.0)
+        self.vocab_size = int(self.text_cfg.vocab_size)
+        self.softcap = float(getattr(self.text_cfg, "final_logit_softcapping", 0.0) or 0.0)
         self.capture_layers = tuple(capture_layers or ())
         self.capture_router = capture_router
         self.logit_lens = logit_lens
         self.system = system
+        self.top_k = int(getattr(self.text_cfg, "top_k_experts", 0) or 0)
         self._cache = None
-        self._prompt_ids = None
-        self.set_prompt(prompt)
+        self._dec_mask = None
+        self._dec_pos = None
+        self.prompt_text: str | None = None
+        self.prompt_ids: list[int] = []
+
+    # ---- construction ------------------------------------------------------
+    @classmethod
+    def from_pretrained(cls, model_id: str = MODEL_ID, quant: str | None = None, device_map: str = "auto",
+                        dtype: str = "auto", **kw) -> "DiffusionGemmaDenoiser":
+        """Load weights. ``quant``: ``None`` (as stored), ``"nvfp4"`` (NVIDIA's
+        checkpoint, needs a GPU with FP4 kernels), ``"bnb4"`` (bitsandbytes
+        NF4; CUDA only, and the MoE experts only quantise with Unsloth's
+        per-expert Linear4bit swap — check ``quantized_fraction()`` after
+        loading, a plain load leaves ~85 % of the parameters in bf16)."""
+        from transformers import AutoProcessor, DiffusionGemmaForBlockDiffusion
+
+        load: dict[str, Any] = dict(dtype=dtype, device_map=device_map)
+        if quant == "nvfp4" and model_id == MODEL_ID:
+            model_id = NVFP4_MODEL_ID
+        elif quant == "bnb4":
+            import torch
+            from transformers import BitsAndBytesConfig
+            load["quantization_config"] = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                                                             bnb_4bit_compute_dtype=torch.bfloat16)
+        elif quant not in (None, "none", "nvfp4"):
+            raise ValueError(f"unknown quant '{quant}' (none | nvfp4 | bnb4)")
+        processor = AutoProcessor.from_pretrained(model_id)
+        model = DiffusionGemmaForBlockDiffusion.from_pretrained(model_id, **load)
+        return cls(model, processor, **kw)
+
+    def quantized_fraction(self) -> float:
+        """Share of parameters held in a quantised dtype (uint8/int8/fp4 storage)."""
+        total = quant = 0
+        for p in self.model.parameters():
+            n = p.numel()
+            total += n
+            if p.dtype in (self.torch.uint8, self.torch.int8) or "fp4" in str(p.dtype) or "float4" in str(p.dtype):
+                quant += n
+        return quant / max(total, 1)
 
     # ---- prompt / cache --------------------------------------------------
-    def set_prompt(self, prompt: str | None) -> None:
-        """Encode the prompt once and cache its KV; later denoise() calls read it."""
-        torch = self.torch
+    def tokenize_prompt(self, prompt: str | None):
+        if self.processor is None:
+            raise RuntimeError("no processor: use set_prompt_ids() with a tokenized prompt")
         messages = []
         if self.system:
             messages.append({"role": "system", "content": self.system})
         messages.append({"role": "user", "content": prompt or ""})
         enc = self.processor.apply_chat_template(messages, tokenize=True, add_generation_prompt=True,
                                                  return_dict=True, return_tensors="pt")
-        self._prompt_ids = enc["input_ids"].to(self.model.device)
-        attn = enc.get("attention_mask")
-        from transformers import DynamicCache
-        self._cache = DynamicCache()
-        with torch.no_grad():
-            # ADAPT: Transformers' generate() calls an `encoder_forward` that
-            # fills `past_key_values` from the prompt; the public forward with
-            # only `input_ids` + a fresh cache does the same (it also runs one
-            # throw-away decoder pass on a random canvas).
-            out = self.model(input_ids=self._prompt_ids,
-                             attention_mask=attn.to(self.model.device) if attn is not None else None,
-                             past_key_values=self._cache, use_cache=True)
-            self._cache = out.past_key_values
+        return enc["input_ids"][0].tolist()
+
+    def set_prompt(self, prompt: str | None) -> None:
+        self.set_prompt_ids(self.tokenize_prompt(prompt))
         self.prompt_text = prompt or ""
+
+    def set_prompt_ids(self, ids: list[int]) -> None:
+        """Encode the prompt once into a fresh KV cache (reference: step 1.a
+        of `generate`, prefill)."""
+        torch = self.torch
+        from transformers import DynamicCache
+
+        dev = self.model.device
+        ids_t = torch.as_tensor([list(ids)], dtype=torch.long, device=dev)
+        cur_len = ids_t.shape[1]
+        attn = torch.ones((1, cur_len), dtype=torch.bool, device=dev)
+        cache = DynamicCache(config=self.cfg.get_text_config(decoder=True))
+        with torch.no_grad():
+            enc = self.model.model.encoder(input_ids=ids_t, attention_mask=attn, past_key_values=cache,
+                                           position_ids=torch.arange(cur_len, device=dev)[None])
+        self._cache = enc.past_key_values
+        self._dec_mask = torch.nn.functional.pad(attn, (0, self.canvas_length), value=True)
+        self._dec_pos = torch.arange(cur_len, cur_len + self.canvas_length, dtype=torch.int32, device=dev)[None]
+        self.prompt_ids = list(ids)
+        self.prompt_text = None
 
     # ---- one denoising pass ---------------------------------------------
     def denoise(self, canvas: np.ndarray, self_cond: np.ndarray | None) -> tuple[np.ndarray, dict[str, Any]]:
+        if self._cache is None:
+            raise RuntimeError("call set_prompt()/set_prompt_ids() before denoise()")
         torch = self.torch
         dev = self.model.device
         ids = torch.as_tensor(np.asarray(canvas, dtype=np.int64), device=dev)[None, :]
         sc = None
         if self_cond is not None:
-            sc = torch.as_tensor(np.asarray(self_cond, dtype=np.float32), device=dev)[None, :, :]
-        kwargs: dict[str, Any] = dict(decoder_input_ids=ids, past_key_values=self._cache,
-                                      self_conditioning_logits=sc,
-                                      output_hidden_states=bool(self.capture_layers))
+            # reference: processed logits cast to the embedding dtype
+            sc = torch.as_tensor(np.asarray(self_cond, dtype=np.float32), device=dev)[None]
+            sc = sc.to(self.model.model.decoder.embed_tokens.weight.dtype)
+        kwargs: dict[str, Any] = dict(decoder_input_ids=ids, past_key_values=self._cache, self_conditioning_logits=sc,
+                                      decoder_attention_mask=self._dec_mask, decoder_position_ids=self._dec_pos)
+        if self.capture_layers:
+            kwargs["output_hidden_states"] = True
         if self.capture_router:
-            kwargs["output_router_logits"] = True  # ADAPT if the recorder kwarg differs
+            kwargs["output_router_logits"] = True
         with torch.no_grad():
             dec = self.model.model.decoder(**kwargs)
-            h_last = dec.last_hidden_state  # [1, L, hidden]
-            logits = self._head(h_last)[0]  # [L, V]
-        capture = self._capture(dec, logits)
-        return logits.float().cpu().numpy(), capture
+            logits = self.head(dec.last_hidden_state)[0]  # [L, V] float32
+            capture = self._capture(dec, logits)
+        return logits.cpu().numpy(), capture
 
-    def _head(self, h):
+    def head(self, h):
+        """`lm_head` + tanh softcapping, exactly as `DiffusionGemmaForBlockDiffusion.forward`."""
         torch = self.torch
-        logits = self.model.lm_head(h)
+        logits = self.model.lm_head(h).to(torch.float32)
         if self.softcap:
             logits = torch.tanh(logits / self.softcap) * self.softcap
-        return logits.float()
+        return logits
 
     def _capture(self, dec, logits) -> dict[str, Any]:
         torch = self.torch
         cap: dict[str, Any] = {}
         hs = getattr(dec, "hidden_states", None)
         if hs is not None and self.capture_layers:
-            layers = [min(l, len(hs) - 1) for l in self.capture_layers]
+            # hidden_states[0] is the embedding output, [i] the output of layer i (1-based).
+            layers = [min(max(l, 0), len(hs) - 1) for l in self.capture_layers]
             cap["hidden"] = np.stack([hs[l][0].float().cpu().numpy() for l in layers]).astype(np.float32)
+            cap["hidden_layers"] = np.asarray(layers, dtype=np.int32)
             if self.logit_lens:
                 final_top = logits.argmax(-1)
                 norm = getattr(self.model.model.decoder, "norm", None)
                 agree = []
-                with torch.no_grad():
-                    for l in layers:
-                        h = hs[l]
-                        if norm is not None and l != len(hs) - 1:
-                            h = norm(h)
-                        agree.append((self._head(h)[0].argmax(-1) == final_top).float().mean().item())
+                for l in layers:
+                    h = hs[l]
+                    if norm is not None and not torch.equal(h, dec.last_hidden_state):
+                        h = norm(h)
+                    agree.append((self.head(h)[0].argmax(-1) == final_top).float().mean().item())
                 cap["logit_lens_agree"] = np.asarray(agree, dtype=np.float32)
         rl = getattr(dec, "router_logits", None)
-        if rl is not None and self.capture_router:
-            k = int(getattr(self.cfg.text_config, "top_k_experts", 8))
+        if rl is not None and self.capture_router and self.top_k:
             counts, ents = [], []
-            for layer_logits in rl:  # each [L, n_experts] (or [1, L, E])
+            for layer_logits in rl:  # [L, E]
                 x = layer_logits.reshape(-1, layer_logits.shape[-1]).float()
-                top = x.topk(k, dim=-1).indices.flatten()
+                top = x.topk(self.top_k, dim=-1).indices.flatten()
                 c = torch.bincount(top, minlength=x.shape[-1]).cpu().numpy()
                 p = c / max(c.sum(), 1)
                 ents.append(float(-(p[p > 0] * np.log(p[p > 0])).sum()))
@@ -141,13 +196,26 @@ class DiffusionGemmaDenoiser:
 
     # ---- text ---------------------------------------------------------------
     def decode(self, ids: np.ndarray, skip_special: bool = False) -> str:
+        if self.processor is None:
+            return " ".join(str(int(i)) for i in ids)
         return self.processor.decode([int(i) for i in ids], skip_special_tokens=skip_special)
 
     def decode_each(self, ids: np.ndarray) -> list[str]:
+        if self.processor is None:
+            return [str(int(i)) for i in ids]
         return [self.processor.decode([int(i)], skip_special_tokens=False) for i in ids]
 
     def trim_after_eos(self, ids: np.ndarray) -> np.ndarray:
-        eos = self.cfg.eos_token_id
+        eos = None
+        for c in (self.cfg, self.text_cfg):
+            try:
+                eos = getattr(c, "eos_token_id", None)
+            except AttributeError:  # heterogeneity configs raise instead of returning None
+                eos = None
+            if eos is not None:
+                break
+        if eos is None:
+            return ids
         eos = set(eos if isinstance(eos, (list, tuple)) else [eos])
         for i, t in enumerate(ids):
             if int(t) in eos:

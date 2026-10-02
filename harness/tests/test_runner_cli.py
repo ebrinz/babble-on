@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from babble_harness.cli import main
 from babble_harness.recording import RecordingHeader, RecordingWriter
@@ -70,3 +71,15 @@ def test_serve_protocol_with_stub(tmp_path):
     assert any(l["type"] == "step" for l in lines)
     assert any(l["type"] == "error" and "need" in l["message"] for l in lines)
     assert done[-1]["seed"] == "prng"  # the empty request falls back to PRNG and says so
+
+
+def test_run_with_tiny_real_adapter(tmp_path):
+    pytest.importorskip("transformers")
+    out = tmp_path / "tiny"
+    rc = main(["run", str(out), "--model", "tiny", "--prng", "3", "--steps", "3", "--prompt", "sea", "--no-early-stop"])
+    assert rc == 0
+    rows = [json.loads(l) for l in (out / "samples.jsonl").read_text().splitlines()]
+    assert len(rows) == 3 and len(rows[0]["ids"]) == 16 and rows[0]["n_steps"] == 3
+    z = np.load(out / "activations" / f"{rows[0]['id']}.npz")
+    assert z["step000_hidden"].shape == (3, 16, 64) and z["step000_router_counts"].shape == (3, 4)
+    assert "router_entropy_mean" in rows[0]["scalars"] and "logit_lens_depth" in rows[0]["scalars"]

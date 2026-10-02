@@ -13,12 +13,20 @@ made here from the ``EntropyTape`` instead, one uniform per draw:
         T        <- t_min + (t_max - t_min) * step / S
         probs    <- softmax(logits / T)
         H_i      <- entropy(probs_i)                      per position
-        accept   <- entropy-bound selection on H (all on the last step)
+        accept   <- entropy-bound selection on H
         sampled  <- tape.categorical(probs)               (one uniform / position)
         renoise  <- tape.randint(V, L)                    (one uniform / position)
         canvas   <- where(accept, sampled, renoise)
-        stop when mean(H) <= confidence_threshold and the argmax canvas has not
-        changed for `stability_threshold` consecutive steps
+        self_cond <- logits / T                           (the *processed* logits)
+        stop when mean(H) < confidence_threshold and the argmax canvas equals
+        the previous `stability_threshold` argmax canvases
+    output: the argmax canvas of the last executed step (not the renoised canvas)
+
+The Transformers loop (`_denoising_step`) is the normative reference; the
+DeepMind JAX sampler differs in minor ways (it forces acceptance on the last
+step) and is not mirrored where the two disagree. `tests/test_reference_parity.py`
+runs the Transformers `generate` on a tiny random model with its RNG calls
+patched to draw from the same tape and asserts identical canvases step by step.
 
 The denoiser is abstract (``Denoiser`` protocol) so the loop runs headless on
 a stub and on the real model through ``models/diffusion_gemma.py``.
@@ -167,10 +175,7 @@ def sample_canvas(denoiser: Denoiser, tape: EntropyTape, cfg: SamplerConfig,
         probs = softmax(logits.astype(np.float64) / T)
         H = token_entropy(probs)
         argmax = logits.argmax(axis=-1)
-        if step == 1:
-            accepted = np.ones(L, dtype=bool)
-        else:
-            accepted = entropy_bound_selection(H, cfg.entropy_bound)
+        accepted = entropy_bound_selection(H, cfg.entropy_bound)
         sampled = tape.categorical(probs, "categorical")
         noise = tape.randint(V, L, "renoise")
         new_canvas = np.where(accepted, sampled, noise)
@@ -181,16 +186,20 @@ def sample_canvas(denoiser: Denoiser, tape: EntropyTape, cfg: SamplerConfig,
         if on_step:
             on_step(tr)
 
-        self_cond = logits
+        self_cond = (logits / T).astype(np.float32)
         canvas = new_canvas
 
-        if cfg.early_stop and step > 1:
+        if cfg.early_stop:
+            # Reference `StableAndConfidentStoppingCriteria`: stable when the
+            # last `stability_threshold` argmax canvases all equal this one
+            # (threshold 0 ⇒ always stable); confident when mean entropy of the
+            # processed logits is strictly below the threshold.
             if prev_argmax is not None and np.array_equal(argmax, prev_argmax):
                 stable += 1
             else:
                 stable = 0
             prev_argmax = argmax
-            if H.mean() <= cfg.confidence_threshold and stable >= cfg.stability_threshold:
+            if H.mean() < cfg.confidence_threshold and stable >= cfg.stability_threshold:
                 stopped_early = True
                 break
 

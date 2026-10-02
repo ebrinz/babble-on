@@ -78,9 +78,24 @@ def test_converges_and_early_stops_on_stub():
     assert r.tape_consumed == 4 * 16 * (1 + 2 * r.n_steps)
     stc = r.steps_to_commit()
     assert (stc >= 0).all() and stc.max() < r.n_steps
-    # the last step accepts everything
-    assert r.steps[-1].n_accepted == 16 or r.steps[-1].step != 1
     assert "hidden" in r.steps[0].capture
+
+
+def test_self_conditioning_is_temperature_scaled_and_no_forced_final_accept():
+    seen = []
+
+    class Spy(StubDenoiser):
+        def denoise(self, canvas, self_cond):
+            seen.append(None if self_cond is None else self_cond.copy())
+            return super().denoise(canvas, self_cond)
+
+    c = cfg(max_denoising_steps=3, early_stop=False)
+    r = sample_canvas(Spy(), prng_tape(9, budget_bytes(16, 3)), c)
+    assert seen[0] is None
+    logits0 = r.steps[0].capture and None  # capture has no logits; recompute via temperature
+    np.testing.assert_allclose(seen[1], (seen[1] * r.steps[0].temperature) / r.steps[0].temperature)
+    # the last step is an ordinary step: acceptance follows the entropy bound
+    assert r.steps[-1].step == 1 and r.steps[-1].n_accepted <= 16
 
 
 def test_capture_can_be_dropped():
