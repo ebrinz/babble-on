@@ -67,6 +67,21 @@ def main(argv=None) -> int:
     p.add_argument("--seconds", type=float, required=True)
     p.add_argument("--baud", type=int, default=9600)
 
+    p = sub.add_parser("record-sim", help="write a simulated .bbrec (healthy or biased) for dry runs")
+    p.add_argument("out")
+    p.add_argument("--seconds", type=float, default=60.0)
+    p.add_argument("--rate", type=float, default=50_000.0, help="bytes/s (TrueRNG V3 ≈ 50000)")
+    p.add_argument("--bias", type=float, default=None, help="P(bit=1); omit for a healthy stream")
+    p.add_argument("--bias-from", type=float, default=0.0, help="seconds of healthy stream before the bias kicks in")
+    p.add_argument("--sim-seed", type=int, default=0)
+
+    p = sub.add_parser("power", help="how many seeds per condition the tests need, and the stream that costs")
+    p.add_argument("--effects", default="0.3,0.5,0.8,1.2")
+    p.add_argument("--dim", type=int, default=64, help="pooled activation dimension for the probe simulation")
+    p.add_argument("--rate", type=float, default=50_000.0, help="device bytes/s for the time estimate")
+    p.add_argument("--quick", action="store_true")
+    _add_sampler_args(p)
+
     p = sub.add_parser("serve", help="sidecar mode (newline JSON on stdio) for the app")
     p.add_argument("--model", default="diffusion_gemma")
     p.add_argument("--model-id", default=None)
@@ -130,6 +145,19 @@ def main(argv=None) -> int:
     if a.cmd == "record-serial":
         from .sources.serial_device import record_serial
         record_serial(a.out, a.device, a.seconds, a.baud, log=log)
+        return 0
+
+    if a.cmd == "record-sim":
+        from .sources.simulate import record_sim
+        n = record_sim(a.out, a.seconds, a.rate, a.bias, seed=a.sim_seed, bias_from_s=a.bias_from)
+        log(f"wrote {n} bytes to {a.out}")
+        return 0
+
+    if a.cmd == "power":
+        from .power import format_table, power_table
+        rows = power_table([float(x) for x in a.effects.split(",")], dim=a.dim, rate=a.rate,
+                           canvas=a.canvas, steps=a.steps, quick=a.quick)
+        print(format_table(rows, a.rate))
         return 0
 
     if a.cmd == "serve":

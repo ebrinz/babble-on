@@ -144,22 +144,40 @@ def analyze_run(run_dir: str | Path, pair: tuple[str, str] = ("in_band", "out_ba
             report["tests"][k] = {"z": r.z, "p": r.p, "median_a": r.median1, "median_b": r.median2, "n": [r.n1, r.n2]}
             flag = " **" if r.p < 0.01 else (" *" if r.p < 0.05 else "")
             lines.append(f"| {k} | {r.median1:.4g} | {r.median2:.4g} | {r.z:+.2f} | {r.p:.3g}{flag} |")
-        X, y = [], []
+        # Probe 1: the scalar feature vector (low-dimensional, well powered).
+        Xs, ys = [], []
         for c, lab in ((a, 1), (b, 0)):
             for r in by[c]:
-                p = run / "activations" / f"{r['id']}.npz"
-                if p.exists():
-                    z = np.load(p)
-                    if "pooled_first" in z:
-                        X.append(z["pooled_first"]); y.append(lab)
-        if len(X) >= 6 and len(set(y)) == 2:
-            pr = probe_with_permutation_null(np.stack(X), np.array(y), n_perm=n_perm)
-            report["probe"] = asdict(pr)
-            lines += ["", "## Linear probe on pooled first-step activations", "",
-                      f"cross-validated accuracy **{pr.accuracy:.3f}** vs permutation null {pr.null_mean:.3f} ± {pr.null_sd:.3f} "
-                      f"(p = {pr.p_value:.3g}, n = {pr.n}, dim = {pr.dim}, |mean diff| = {pr.mean_diff_norm:.3g})"]
-        else:
-            lines += ["", "_probe skipped: need ≥ 6 samples with activations across both conditions_"]
+                Xs.append([r["scalars"].get(k, float("nan")) for k in keys]); ys.append(lab)
+        Xs = np.array(Xs, dtype=np.float64)
+        if Xs.size:
+            Xs = Xs[:, ~np.isnan(Xs).any(axis=0)]  # drop scalars undefined for some sample (e.g. commit stats)
+            Xs = Xs[:, Xs.std(axis=0) > 0]  # and constants
+        report["probes"] = {}
+        lines += ["", "## Linear probes (mass-mean, cross-validated, permutation null)", ""]
+        if len(Xs) >= 6 and len(set(ys)) == 2 and Xs.shape[1] > 0:
+            pr = probe_with_permutation_null(Xs, np.array(ys), n_perm=n_perm)
+            report["probes"]["scalars"] = asdict(pr)
+            lines.append(f"- **scalar features** ({pr.dim} dims): accuracy **{pr.accuracy:.3f}** vs null {pr.null_mean:.3f} ± {pr.null_sd:.3f} "
+                         f"(p = {pr.p_value:.3g}, n = {pr.n})")
+        # Probe 2: pooled residual-stream activations, first and last step.
+        for key, label in (("pooled_first", "first-step pooled activations"), ("pooled_last", "last-step pooled activations")):
+            X, y = [], []
+            for c, lab in ((a, 1), (b, 0)):
+                for r in by[c]:
+                    p = run / "activations" / f"{r['id']}.npz"
+                    if p.exists():
+                        z = np.load(p)
+                        if key in z:
+                            X.append(z[key]); y.append(lab)
+            if len(X) >= 6 and len(set(y)) == 2:
+                pr = probe_with_permutation_null(np.stack(X), np.array(y), n_perm=n_perm)
+                report["probes"][key] = asdict(pr)
+                lines.append(f"- **{label}** ({pr.dim} dims): accuracy **{pr.accuracy:.3f}** vs null {pr.null_mean:.3f} ± {pr.null_sd:.3f} "
+                             f"(p = {pr.p_value:.3g}, n = {pr.n}, |mean diff| = {pr.mean_diff_norm:.3g})")
+            else:
+                lines.append(f"- {label}: skipped (need ≥ 6 samples with activations across both conditions)")
+        report["probe"] = report["probes"].get("pooled_first")
     lines += ["", "## Reading the numbers", "",
               "- `accepted_step0`, `commit_step_mean`: how fast the canvas crystallises — the direct analogue of the Plaid heat map.",
               "- `entropy_auc`, `n_steps`: how much uncertainty the model carried before early stopping.",

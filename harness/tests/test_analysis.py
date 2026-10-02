@@ -26,6 +26,10 @@ def test_probe_separable_vs_null():
     Xs = X.copy()
     Xs[:40, 0] += 4.0
     assert cv_probe_accuracy(Xs, y) > 0.9
+    assert cv_probe_accuracy(Xs, y, method="ridge") > 0.85
+    # a 3-sigma shift in one of 16 dims with 15 per class: the mass-mean probe stays useful
+    Xw = rng.normal(size=(30, 16)); Xw[:15, 0] += 3.0
+    assert cv_probe_accuracy(Xw, np.array([1] * 15 + [0] * 15)) > 0.75
     r = probe_with_permutation_null(Xs, y, n_perm=30)
     assert r.accuracy > 0.9 and r.p_value < 0.05 and abs(r.null_mean - 0.5) < 0.15
     rn = probe_with_permutation_null(X, y, n_perm=30)

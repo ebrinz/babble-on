@@ -10,6 +10,8 @@ of the Plaid engine.
 
 ``entropy_hex`` must hold at least ``budget_bytes(seq_len, steps)`` bytes;
 with none, a PRNG tape is used and the reply says so (``"seed":"prng"``).
+``seq_len`` is honoured only by the stub: a real model's canvas is fixed
+(256) and the ``done`` reply reports the length actually used.
 """
 from __future__ import annotations
 
@@ -40,7 +42,8 @@ def serve(model: str = "diffusion_gemma", **model_kw) -> None:
             emit({"type": "error", "message": f"bad request json: {e}"}); continue
         try:
             steps = int(req.get("steps", 48))
-            seq_len = int(req.get("seq_len", getattr(den, "canvas_length", 256)))
+            # A real model has a fixed canvas; only the stub takes the requested length.
+            seq_len = int(getattr(den, "canvas_length", None) or req.get("seq_len", 256))
             cfg = SamplerConfig(canvas_length=seq_len, vocab_size=getattr(den, "vocab_size", 262_144),
                                 max_denoising_steps=steps, early_stop=bool(req.get("early_stop", True)))
             need = budget_bytes(seq_len, steps)
@@ -67,6 +70,7 @@ def serve(model: str = "diffusion_gemma", **model_kw) -> None:
             toks = den.decode_each(ids) if hasattr(den, "decode_each") else [str(i) for i in ids]
             text = den.decode(den.trim_after_eos(ids)) if hasattr(den, "decode") else "".join(toks)
             emit({"type": "done", "i": res.n_steps, "total": steps, "tokens": toks, "text": text,
-                  "elapsed": round(time.time() - t0, 1), "seed": seed, "entropy_used": res.tape_consumed})
+                  "elapsed": round(time.time() - t0, 1), "seed": seed, "entropy_used": res.tape_consumed,
+                  "seq_len": seq_len, "stopped_early": res.stopped_early})
         except Exception as e:  # noqa: BLE001 — report to the host
             emit({"type": "error", "message": f"{type(e).__name__}: {e}"})

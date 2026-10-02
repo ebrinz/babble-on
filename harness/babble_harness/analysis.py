@@ -2,8 +2,15 @@
 
 Per-sample scalars come from the sampler trace; activations from the
 adapter's capture. Between-condition tests: Mann-Whitney U (two-sided, normal
-approximation) on scalars, and a cross-validated linear probe (ridge
-classifier) on pooled activations with a label-permutation null.
+approximation) on scalars, and a cross-validated linear probe on pooled
+activations (and on the scalar vector) with a label-permutation null.
+
+The default probe is a mass-mean ("difference of means") classifier on
+features scaled by their pooled *within-class* deviation. Scaling by the
+overall deviation, as a generic standardiser does, shrinks exactly the
+direction that carries the class shift; and an unregularised linear fit is
+hopeless at the sample sizes this experiment will have (tens per condition
+in thousands of dimensions). A ridge classifier is kept as an option.
 """
 from __future__ import annotations
 
@@ -124,9 +131,19 @@ def _ridge_predict(w, X):
     return np.hstack([X, np.ones((X.shape[0], 1))]) @ w
 
 
-def cv_probe_accuracy(X: np.ndarray, y: np.ndarray, folds: int = 5, lam: float = 1.0, seed: int = 0) -> float:
-    """k-fold accuracy of a ridge classifier (labels ±1), features standardised
-    on the training fold only."""
+def _pooled_scale(Xtr, ytr):
+    """Centre on the training mean; scale by the pooled within-class deviation."""
+    mu = Xtr.mean(0)
+    pos, neg = Xtr[ytr > 0], Xtr[ytr <= 0]
+    var = 0.5 * (pos.var(0) + neg.var(0)) if len(pos) > 1 and len(neg) > 1 else Xtr.var(0)
+    return mu, np.sqrt(var) + 1e-8
+
+
+def cv_probe_accuracy(X: np.ndarray, y: np.ndarray, folds: int = 5, lam: float = 1.0, seed: int = 0,
+                      method: str = "meandiff") -> float:
+    """k-fold accuracy of a linear probe (labels ±1). ``method``: ``"meandiff"``
+    (mass-mean, default) or ``"ridge"``. Scaling is fitted on the training
+    fold only."""
     X = np.asarray(X, dtype=np.float64)
     y = np.where(np.asarray(y) > 0, 1.0, -1.0)
     n = len(y)
@@ -137,9 +154,15 @@ def cv_probe_accuracy(X: np.ndarray, y: np.ndarray, folds: int = 5, lam: float =
     for f in range(folds):
         test = idx[f::folds]
         train = np.setdiff1d(idx, test)
-        mu, sd = X[train].mean(0), X[train].std(0) + 1e-8
-        w = _ridge_fit((X[train] - mu) / sd, y[train], lam)
-        pred = np.sign(_ridge_predict(w, (X[test] - mu) / sd))
+        mu, sd = _pooled_scale(X[train], y[train])
+        A, B = (X[train] - mu) / sd, (X[test] - mu) / sd
+        if method == "ridge":
+            w = _ridge_fit(A, y[train], lam)
+            score = _ridge_predict(w, B)
+        else:
+            m1, m0 = A[y[train] > 0].mean(0), A[y[train] <= 0].mean(0)
+            score = (B - (m1 + m0) / 2) @ (m1 - m0)
+        pred = np.where(score >= 0, 1.0, -1.0)
         correct += int((pred == y[test]).sum())
     return correct / n
 

@@ -53,6 +53,7 @@ def test_run_and_analyze_with_stub_end_to_end(tmp_path):
     assert (out / "report.md").exists()
     rep = json.loads((out / "report.json").read_text())
     assert "n_steps" in rep["tests"]
+    assert "scalars" in rep["probes"] and "pooled_first" in rep["probes"]
     # re-analyze with a different pair
     assert main(["analyze", str(out), "--pair", "in_band", "prng", "--perm", "20"]) == 0
 
