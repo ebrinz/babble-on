@@ -1,9 +1,15 @@
+use std::path::PathBuf;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 use engine::{Engine, ControlMsg, SeedReply, resolve_kind};
 use diffusion::{Diffusion, run_generation, EMBED_DIM};
+use bbrec::{SeedBundle, SeedTag};
+
+/// Default seed export size: one DiffusionGemma canvas at the reference
+/// settings, `4·256·(1 + 2·48)` bytes (see docs/superpowers/specs/2026-10-02).
+pub const GEMMA_SEED_BYTES: usize = 4 * 256 * (1 + 2 * 48);
 
 mod math;
 mod stats;
@@ -89,6 +95,84 @@ fn generate(
     Ok(())
 }
 
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// Draw seed bytes exactly as `generate` would (anomaly bank first, live
+/// top-up) and write them as a seed bundle the harness can load. Spending is
+/// destructive, as for a generation. Returns the `.seed.bin` path.
+#[tauri::command]
+fn export_seed(
+    n_bytes: Option<usize>,
+    app: tauri::AppHandle,
+    ctrl: tauri::State<Control>,
+) -> Result<String, String> {
+    let need = n_bytes.unwrap_or(GEMMA_SEED_BYTES);
+    let (etx, erx) = channel::<SeedReply>();
+    let _ = ctrl
+        .0
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .send(ControlMsg::GetSeed(need, etx));
+    let seed = erx.recv_timeout(Duration::from_secs(2)).map_err(|_| "engine did not reply".to_string())?;
+    if seed.bytes.len() < need {
+        return Err(format!("only {} of {need} bytes available yet — let the stream run", seed.bytes.len()));
+    }
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("app data dir: {e}"))?
+        .join("exports");
+    let stamp = now_ms();
+    let bundle = SeedBundle {
+        bytes: seed.bytes.len(),
+        bank_fraction: seed.bank_fraction,
+        tags: seed.tags.iter().map(|t| SeedTag { at_secs: t.at_secs, peak_sigma: t.peak_sigma, band: t.band.to_string() }).collect(),
+        created_at_ms: stamp,
+        source: "babble-on".into(),
+        label: SeedBundle::label_for(seed.bank_fraction).into(),
+    };
+    let (bin, _json) = bundle
+        .write(&dir.join(format!("seed-{stamp}")), &seed.bytes)
+        .map_err(|e| format!("write seed bundle: {e}"))?;
+    Ok(bin.to_string_lossy().into_owned())
+}
+
+/// Start recording the raw stream to a `.bbrec`. `path` defaults to
+/// `<app-data>/recordings/<timestamp>.bbrec`. Returns the path.
+#[tauri::command]
+fn start_recording(
+    path: Option<String>,
+    app: tauri::AppHandle,
+    ctrl: tauri::State<Control>,
+) -> Result<String, String> {
+    let path = match path {
+        Some(p) => PathBuf::from(p),
+        None => app
+            .path()
+            .app_data_dir()
+            .map_err(|e| format!("app data dir: {e}"))?
+            .join("recordings")
+            .join(format!("stream-{}.bbrec", now_ms())),
+    };
+    let (tx, rx) = channel();
+    let _ = ctrl
+        .0
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .send(ControlMsg::StartRecording(path, tx));
+    rx.recv_timeout(Duration::from_secs(2)).map_err(|_| "engine did not reply".to_string())?
+}
+
+#[tauri::command]
+fn stop_recording(ctrl: tauri::State<Control>) {
+    let _ = ctrl.0.lock().unwrap_or_else(|e| e.into_inner()).send(ControlMsg::StopRecording);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let (tx, rx) = channel::<ControlMsg>();
@@ -97,7 +181,8 @@ pub fn run() {
         .manage(Control(Mutex::new(tx)))
         .manage(Arc::new(Diffusion::new()))
         .invoke_handler(tauri::generate_handler![
-            start_source, reset, set_window, set_paused, generate
+            start_source, reset, set_window, set_paused, generate,
+            export_seed, start_recording, stop_recording
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

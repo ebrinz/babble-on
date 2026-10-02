@@ -5,12 +5,19 @@ edition = "2021"
 description = "All-Rust candle port of Plaid-1B continuous text diffusion, TrueRNG-seeded."
 
 [dependencies]
-candle-core = { version = "0.10", features = ["metal"] }
 candle-nn = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokenizers = "0.23"
 anyhow = "1"
+
+# Metal is macOS-only; elsewhere the engine runs on CPU (`Device::new_metal`
+# simply errors without the feature and `Engine::load` falls back).
+[target.'cfg(target_os = "macos")'.dependencies]
+candle-core = { version = "0.10", features = ["metal"] }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+candle-core = "0.10"
 
 [lib]
 name = "diffusion_rs"

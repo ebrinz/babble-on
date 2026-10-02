@@ -20,6 +20,7 @@
         </select>
         <button id="pause">pause</button>
         <button id="reset">reset</button>
+        <button id="record" title="write the raw stream to a .bbrec recording for the experiment harness">● record</button>
       </header>
       <section class="toprow">
         <div class="panel"><h2>Coherence</h2><canvas id="coherence"></canvas></div>
@@ -43,6 +44,7 @@
             <option value="ultra">ultra · 768 steps</option>
           </select>
           <button id="gen-btn">Generate</button>
+          <button id="export-seed" title="spend the anomaly bank into a seed bundle (97 KiB, one DiffusionGemma canvas) for the harness">export seed</button>
           <span id="gen-status">idle</span>
         </div>
         <div class="gen-params">

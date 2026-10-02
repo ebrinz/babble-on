@@ -31,6 +31,9 @@ pub struct SnapshotDto {
     /// Anomaly-bank fill state (bytes), stamped by the engine each tick.
     pub bank_fill: usize,
     pub bank_capacity: usize,
+    /// Path of the `.bbrec` being written, if a recording is in progress.
+    pub recording: Option<String>,
+    pub recording_bytes: u64,
 }
 
 fn nz(x: f64) -> Option<f64> { if x.is_finite() { Some(x) } else { None } }
@@ -69,6 +72,8 @@ impl SnapshotDto {
             label, status,
             bank_fill: 0,
             bank_capacity: 0,
+            recording: None,
+            recording_bytes: 0,
         }
     }
 }

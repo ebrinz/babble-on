@@ -1,0 +1,23 @@
+[project]
+name = "babble-harness"
+version = "0.1.0"
+description = "babble-on experiment harness: DiffusionGemma driven by recorded hardware entropy, with mechanistic-interp capture."
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26", "torch>=2.4"]
+
+[project.optional-dependencies]
+model = ["transformers>=5.8.0.dev0", "accelerate", "safetensors", "sentencepiece"]
+dev = ["pytest"]
+
+[project.scripts]
+babble-harness = "babble_harness.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["babble_harness*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

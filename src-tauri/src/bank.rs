@@ -5,9 +5,10 @@ use std::collections::VecDeque;
 
 use serde::Serialize;
 
-/// Bank capacity in bytes. A full 256-token latent needs 16 KiB
-/// (seq_len 256 × embed_dim 16 × 4 bytes/gaussian), so this holds ~4 seeds.
-pub const BANK_CAPACITY: usize = 64 * 1024;
+/// Bank capacity in bytes. A DiffusionGemma canvas (256 tokens, 48 steps)
+/// consumes up to 97 KiB (`4·256·(1+2·48)`), so this holds ~5 such seeds;
+/// a Plaid-1B latent (16 KiB) is ~32.
+pub const BANK_CAPACITY: usize = 512 * 1024;
 
 /// Provenance of a banked run: the anomaly event whose bytes these are.
 /// `at_secs`/`peak_sigma`/`band` mirror `stats::AnomalyEvent` (band as label).

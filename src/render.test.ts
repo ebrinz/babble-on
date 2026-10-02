@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { envelopePoints, bandColor, verdictColor, crystallize, heatColor, seedStamp } from "./render";
+import { envelopePoints, bandColor, verdictColor, crystallize, heatColor, seedStamp, recLabel } from "./render";
 
 describe("render helpers", () => {
   it("envelope is the parabola z*sqrt(k)", () => {
@@ -35,5 +35,10 @@ describe("render helpers", () => {
     expect(seedStamp(0.72, tags, fmt)).toBe(
       "seed: 72% anomaly bank — +3.2σ @ T10, −2.8σ @ T40",
     );
+  });
+  it("record label switches units at 1 MiB", () => {
+    expect(recLabel(0)).toBe("■ rec 0 KiB");
+    expect(recLabel(512 * 1024)).toBe("■ rec 512 KiB");
+    expect(recLabel(1.5 * 1048576)).toBe("■ rec 1.5 MiB");
   });
 });

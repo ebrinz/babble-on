@@ -4,6 +4,7 @@ body { margin:0; background:var(--bg); color:var(--turq); font:14px ui-monospace
 main { height:100vh; display:flex; flex-direction:column; }
 header { display:flex; gap:12px; align-items:center; padding:8px 12px; border-bottom:1px solid #1d2422; }
 header select, header button { background:#111614; color:var(--turq); border:1px solid #243029; padding:4px 8px; font:inherit; }
+header button.rec { color:#ff4d4d; border-color:#5a2222; }
 /* Analytics strip on top, short metrics strip on the bottom, and the diffusion
    output as the flexible centerpiece that absorbs all remaining height. */
 .toprow { display:grid; grid-template-columns:1.2fr 1fr 1.4fr; gap:10px; padding:10px 10px 0; height:210px; }

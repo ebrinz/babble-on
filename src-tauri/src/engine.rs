@@ -1,5 +1,10 @@
+use std::path::PathBuf;
+use std::time::Instant;
+
+use bbrec::{RecordingHeader, RecordingWriter};
+
 use crate::source::{Source, SourceKind, SourceStatus, autodetect};
-use crate::stats::{AnomalyEvent, Band, Stats};
+use crate::stats::{AnomalyEvent, Band, Stats, TRIAL_INTERVAL, TRIAL_MIN_BITS};
 use crate::bank::{AnomalyBank, ProvenanceTag, BANK_CAPACITY};
 use crate::dto::SnapshotDto;
 
@@ -20,6 +25,17 @@ pub enum ControlMsg {
     /// Drawn destructively from the anomaly bank first, topped up with the
     /// most recent live-stream bytes.
     GetSeed(usize, std::sync::mpsc::Sender<SeedReply>),
+    /// Start writing every tick's drained bytes to a `.bbrec` at this path
+    /// (replaces any recording in progress). Replies with the result.
+    StartRecording(PathBuf, std::sync::mpsc::Sender<Result<String, String>>),
+    StopRecording,
+}
+
+/// An open `.bbrec` plus the clock its frames are stamped against.
+struct Recorder {
+    writer: RecordingWriter<std::fs::File>,
+    path: PathBuf,
+    started: Instant,
 }
 
 pub struct Engine {
@@ -28,12 +44,45 @@ pub struct Engine {
     bank: AnomalyBank,
     paused: bool,
     status: String,
+    recorder: Option<Recorder>,
 }
 
 impl Engine {
     pub fn new(initial: SourceKind) -> Self {
         let source = Source::spawn(initial);
-        Engine { source, stats: Stats::new(1 << 16), bank: AnomalyBank::new(BANK_CAPACITY), paused: false, status: "connecting".into() }
+        Engine { source, stats: Stats::new(1 << 16), bank: AnomalyBank::new(BANK_CAPACITY), paused: false, status: "connecting".into(), recorder: None }
+    }
+
+    fn start_recording(&mut self, path: PathBuf) -> Result<String, String> {
+        self.stop_recording();
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+        }
+        let header = RecordingHeader {
+            source: self.source.label.clone(),
+            started_at_ms: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0),
+            trial_interval_ms: TRIAL_INTERVAL.as_millis() as u64,
+            trial_min_bits: TRIAL_MIN_BITS,
+            notes: format!("babble-on {}", env!("CARGO_PKG_VERSION")),
+        };
+        let writer = RecordingWriter::create(&path, &header).map_err(|e| format!("open {}: {e}", path.display()))?;
+        let shown = path.to_string_lossy().into_owned();
+        self.recorder = Some(Recorder { writer, path, started: Instant::now() });
+        Ok(shown)
+    }
+
+    fn stop_recording(&mut self) {
+        if let Some(r) = self.recorder.take() {
+            let _ = r.writer.finish();
+        }
+    }
+
+    /// (path, bytes written) of the recording in progress.
+    pub fn recording(&self) -> Option<(String, u64)> {
+        self.recorder.as_ref().map(|r| (r.path.to_string_lossy().into_owned(), r.writer.bytes))
     }
 
     pub fn apply(&mut self, msg: ControlMsg) {
@@ -54,6 +103,10 @@ impl Engine {
                 let bank_fraction = if n == 0 { 0.0 } else { banked as f64 / n as f64 };
                 let _ = reply.send(SeedReply { bytes, bank_fraction, tags });
             }
+            ControlMsg::StartRecording(path, reply) => {
+                let _ = reply.send(self.start_recording(path));
+            }
+            ControlMsg::StopRecording => self.stop_recording(),
         }
     }
 
@@ -72,6 +125,16 @@ impl Engine {
             }
             self.stats.push(&drained);
             self.stats.tick_trials();
+            // One frame per tick: exactly the bytes the walk just saw, stamped
+            // on the recording's own clock. Flushed per tick so a crash loses
+            // at most one frame (the reader tolerates a torn tail).
+            if let Some(r) = self.recorder.as_mut() {
+                let t_ns = r.started.elapsed().as_nanos() as u64;
+                if r.writer.frame(t_ns, &drained).and_then(|_| r.writer.flush()).is_err() {
+                    self.status = "error: recording write failed".into();
+                    self.recorder = None;
+                }
+            }
         } else {
             // Keep the unbounded channel from growing while paused, without
             // feeding the bytes into the (frozen) stats window.
@@ -92,6 +155,10 @@ impl Engine {
         let (fill, cap) = self.bank.fill();
         dto.bank_fill = fill;
         dto.bank_capacity = cap;
+        if let Some((path, bytes)) = self.recording() {
+            dto.recording = Some(path);
+            dto.recording_bytes = bytes;
+        }
         dto
     }
 }
@@ -179,6 +246,38 @@ mod tests {
         assert_eq!(dto.bank_capacity, BANK_CAPACITY);
         e.apply(ControlMsg::Reset);
         assert_eq!(e.bank.fill().0, 0);
+    }
+
+    #[test]
+    fn recording_writes_one_frame_per_tick_and_skips_paused() {
+        let dir = std::env::temp_dir().join(format!("babble-rec-{}", std::process::id()));
+        let path = dir.join("nested").join("s.bbrec");
+        let mut e = Engine::new(SourceKind::Simulate);
+        let (tx, rx) = std::sync::mpsc::channel();
+        e.apply(ControlMsg::StartRecording(path.clone(), tx));
+        assert_eq!(rx.recv().unwrap().unwrap(), path.to_string_lossy());
+        std::thread::sleep(Duration::from_millis(120));
+        let before = e.tick().total_bytes;
+        std::thread::sleep(Duration::from_millis(120));
+        let dto = e.tick();
+        assert!(dto.total_bytes > before && dto.total_bytes > 0);
+        assert_eq!(dto.recording.as_deref(), Some(&*path.to_string_lossy()));
+        assert_eq!(dto.recording_bytes, dto.total_bytes, "every drained byte is recorded");
+        e.apply(ControlMsg::SetPaused(true));
+        std::thread::sleep(Duration::from_millis(120));
+        let paused = e.tick();
+        assert_eq!(paused.recording_bytes, dto.recording_bytes, "paused ticks write nothing");
+        e.apply(ControlMsg::StopRecording);
+        assert!(e.tick().recording.is_none());
+
+        let r = bbrec::RecordingReader::open(&path).unwrap();
+        assert!(r.header.source.starts_with("simulator"), "source label: {}", r.header.source);
+        assert_eq!(r.header.trial_min_bits, TRIAL_MIN_BITS);
+        let frames = r.frames().unwrap();
+        assert_eq!(frames.len(), 2);
+        assert_eq!(frames.iter().map(|f| f.1.len() as u64).sum::<u64>(), dto.total_bytes);
+        assert!(frames[0].0 < frames[1].0);
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

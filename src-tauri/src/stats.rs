@@ -24,8 +24,8 @@ pub const Z999: f64 = 3.290_526_73;
 
 /// How often a coherence "trial" is finalized. Decoupling from throughput keeps
 /// the random walk readable regardless of how fast the device streams.
-const TRIAL_INTERVAL: Duration = Duration::from_millis(100);
-const TRIAL_MIN_BITS: u64 = 2048;
+pub const TRIAL_INTERVAL: Duration = Duration::from_millis(100);
+pub const TRIAL_MIN_BITS: u64 = 2048;
 
 /// Rolling buffer kept for the in-TUI authenticity audit (press `a`).
 const AUDIT_CAP: usize = 2 * 1024 * 1024;

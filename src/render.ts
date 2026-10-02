@@ -74,6 +74,13 @@ export function seedStamp(
   return `seed: ${pct}% anomaly bank — ${parts.join(", ")}`;
 }
 
+/** Label for the record button while a recording is in progress, e.g.
+ *  "■ rec 1.2 MiB" (below 1 MiB: KiB). */
+export function recLabel(bytes: number): string {
+  const size = bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MiB` : `${(bytes / 1024).toFixed(0)} KiB`;
+  return `■ rec ${size}`;
+}
+
 // --- Canvas painters (not unit-tested; verified manually in Task 8) ---
 type Dto = any;
 

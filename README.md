@@ -6,6 +6,8 @@
 
 A Tauri 2 desktop app that reads from a TrueRNG hardware random-number generator (or falls back to a built-in software simulator) and visualises the stream quality in real time. Entropy harvested from the live stream — and, preferentially, from an anomaly bank of out-of-band bytes — seeds the initial latent for on-device diffusion text generation.
 
+The app also **records** its raw stream and **exports** anomaly-bank seeds for the separate [experiment harness](harness/README.md), which drives Google's **DiffusionGemma** from that entropy and compares in-coherence vs. out-of-coherence generations mechanistically. See the [design spec](docs/superpowers/specs/2026-10-02-diffusiongemma-harness-design.md).
+
 ## Quick Start (observatory)
 
 Requirements: **Rust** (stable, 2021 edition) and **Node.js** ≥ 18 with npm. No hardware needed — without a TrueRNG plugged in, the app uses its software simulator.
@@ -49,7 +51,7 @@ Extra prerequisites: [`uv`](https://github.com/astral-sh/uv), Python 3.12, and t
 
 After this, `models/plaid1b/` contains the four `.pt` files plus `plaid1b.safetensors` and `meta.json` — the latter two are what **Generate** loads (on first use, so the first generation takes longer).
 
-Generation runs Metal-accelerated on Apple Silicon with a CPU fallback, and is developed and tested on macOS. The `sidecar/` Python service is the reference implementation the Rust port is validated against, and doubles as a standalone playground — see [`sidecar/README.md`](sidecar/README.md).
+Generation runs Metal-accelerated on Apple Silicon with a CPU fallback, and is developed and tested on macOS (the Metal feature is enabled only on macOS, so the crates also build and test headless on Linux). The `sidecar/` Python service is the reference implementation the Rust port is validated against, and doubles as a standalone playground — see [`sidecar/README.md`](sidecar/README.md).
 
 ## Building a Shareable App
 
@@ -102,6 +104,30 @@ switch the source to **bad rng** → the walk escapes the gold band → the bank
 floods → hit **Generate** → the text is stamped with the anomaly that birthed
 it. **reset** clears the bank along with the stats.
 
+## Recording & Seed Export (for the harness)
+
+- **● record** (header) writes every tick's raw bytes with a timestamp to
+  `<app-data>/recordings/stream-<ts>.bbrec`; the button shows the running
+  size and stops the recording on a second click. Paused ticks are not
+  recorded. The harness replays the coherence walk over the file to label
+  each byte in- or out-of-band (`python -m babble_harness.cli label`).
+- **export seed** (diffusion pane) draws 97 KiB — one DiffusionGemma canvas
+  at 48 steps — bank-first exactly as **Generate** would, and writes
+  `<app-data>/exports/seed-<ts>.seed.bin` + `.seed.json` (bank fraction,
+  anomaly tags). It spends the bank, so the meter drops.
+- The anomaly bank now holds 512 KiB (~5 DiffusionGemma seeds).
+
+Both formats are defined once in the dependency-light [`bbrec`](bbrec/) crate
+and mirrored in Python; the bytes → uniform mapping is pinned by
+`docs/contract/noise_vectors.json` on both sides.
+
+## DiffusionGemma status
+
+**Generate** still runs the Plaid-1B candle engine. The DiffusionGemma port is
+staged: the harness contains the entropy-driven sampler, a Transformers
+adapter and a sidecar mode speaking the app's existing protocol; wiring the
+app to spawn it (or a candle port of the 26B MoE) is phase 2.
+
 ## Visual 3-state smoke (user-run)
 
 Because this README is authored by a headless CI agent, the following end-to-end check must be performed by a human on a machine with a display:
@@ -126,8 +152,10 @@ Also user-run, for the same reason as above:
 |-------|--------|
 | `npm run build` (vite) | ✓ pass |
 | `cargo build --release` | ✓ pass |
-| `cargo test` | ✓ 27/27 pass |
-| `npm run test` (vitest) | ✓ 6/6 pass |
+| `cargo test` (src-tauri) | ✓ 28/28 pass (Linux, CPU) |
+| `cargo test` (bbrec) | ✓ 11/11 pass |
+| `harness/` pytest | ✓ 34/34 pass |
+| `npm run test` (vitest) | ✓ 7/7 pass |
 | Visual 3-state smoke | **user-run** (see above) |
 | Anomaly bank smoke | **user-run** (see above) |
 

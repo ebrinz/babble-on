@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor, crystallize, heatColor, seedStamp } from "./render";
+import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor, crystallize, heatColor, seedStamp, recLabel } from "./render";
 import "./style.css";
 
 function canvas(id: string): [CanvasRenderingContext2D, number, number] {
@@ -76,6 +76,7 @@ listen<any>("snapshot", (e) => {
   (document.getElementById("bank-fill") as HTMLElement).style.width = `${pct.toFixed(1)}%`;
   document.getElementById("bank-label")!.textContent =
     `bank ${(dto.bank_fill / 1024).toFixed(1)}/${(cap / 1024).toFixed(0)} KiB`;
+  renderRecording(dto.recording ?? null, dto.recording_bytes ?? 0);
 });
 
 document.getElementById("source")!.addEventListener("change", (ev) =>
@@ -85,6 +86,27 @@ document.getElementById("pause")!.addEventListener("click", () => {
   paused = !paused; invoke("set_paused", { paused });
   document.getElementById("pause")!.textContent = paused ? "resume" : "pause";
 });
+
+// --- Stream recording (.bbrec for the harness) ---------------------------
+const recBtn = document.getElementById("record") as HTMLButtonElement;
+let recording: string | null = null;
+recBtn.addEventListener("click", async () => {
+  if (recording) {
+    await invoke("stop_recording");
+    return;
+  }
+  try {
+    await invoke<string>("start_recording", {});
+  } catch (err) {
+    document.getElementById("status")!.textContent = `error: ${err}`;
+  }
+});
+function renderRecording(path: string | null, bytes: number) {
+  recording = path;
+  recBtn.classList.toggle("rec", !!path);
+  recBtn.textContent = path ? recLabel(bytes) : "● record";
+  recBtn.title = path ? `recording to ${path} — click to stop` : "write the raw stream to a .bbrec recording for the experiment harness";
+}
 
 // --- Diffusion pane ---------------------------------------------------------
 const MODES: Record<string, { steps: number; seqLen: number }> = {
@@ -152,6 +174,16 @@ listen<any>("diffusion", (e) => {
       document.getElementById("gen-seed")!.textContent =
         seedStamp(m.bank_fraction, m.tags || [], fmtClock);
       break;
+  }
+});
+
+document.getElementById("export-seed")!.addEventListener("click", async () => {
+  genStatus.textContent = "exporting seed (spends the bank)…";
+  try {
+    const path = await invoke<string>("export_seed", {});
+    genStatus.textContent = `seed exported → ${path}`;
+  } catch (err) {
+    genStatus.textContent = `error: ${err}`;
   }
 });
 
