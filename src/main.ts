@@ -109,12 +109,36 @@ function renderRecording(path: string | null, bytes: number) {
 }
 
 // --- Diffusion pane ---------------------------------------------------------
-const MODES: Record<string, { steps: number; seqLen: number }> = {
-  fast: { steps: 48, seqLen: 96 },
-  balanced: { steps: 192, seqLen: 256 },
-  quality: { steps: 384, seqLen: 256 },
-  ultra: { steps: 768, seqLen: 256 },
+// Step presets per engine. Plaid is continuous diffusion (hundreds of
+// steps); DiffusionGemma's reference sampler uses at most 48 and usually
+// stops early, so its presets are small.
+const ENGINE_MODES: Record<string, Record<string, { steps: number; seqLen: number; label: string }>> = {
+  plaid: {
+    fast: { steps: 48, seqLen: 96, label: "fast · 48 steps" },
+    balanced: { steps: 192, seqLen: 256, label: "balanced · 192 steps" },
+    quality: { steps: 384, seqLen: 256, label: "quality · 384 steps" },
+    ultra: { steps: 768, seqLen: 256, label: "ultra · 768 steps" },
+  },
+  gemma: {
+    fast: { steps: 16, seqLen: 256, label: "fast · 16 steps" },
+    balanced: { steps: 32, seqLen: 256, label: "balanced · 32 steps" },
+    quality: { steps: 48, seqLen: 256, label: "reference · 48 steps" },
+    ultra: { steps: 96, seqLen: 256, label: "deep · 96 steps" },
+  },
 };
+const engineSel = document.getElementById("gen-engine") as HTMLSelectElement;
+const modeSel = document.getElementById("gen-mode") as HTMLSelectElement;
+function fillModes(engine: string) {
+  const modes = ENGINE_MODES[engine] || ENGINE_MODES.plaid;
+  modeSel.innerHTML = Object.entries(modes)
+    .map(([k, m]) => `<option value="${k}"${k === "balanced" ? " selected" : ""}>${m.label}</option>`)
+    .join("");
+  const plaidOnly = document.querySelector(".gen-params") as HTMLElement;
+  plaidOnly.style.opacity = engine === "gemma" ? "0.4" : "1";
+  plaidOnly.title = engine === "gemma" ? "temperature/noise/DDIM apply to the Plaid engine only" : "";
+}
+engineSel.addEventListener("change", () => fillModes(engineSel.value));
+fillModes(engineSel.value);
 
 const genBtn = document.getElementById("gen-btn") as HTMLButtonElement;
 const genStatus = document.getElementById("gen-status")!;
@@ -153,14 +177,18 @@ listen<any>("diffusion", (e) => {
   const m = e.payload;
   switch (m.type) {
     case "loading":
-      genStatus.textContent = "loading model… (first run only)";
+      genStatus.textContent = engineSel.value === "gemma"
+        ? "starting DiffusionGemma sidecar… (first run only; the 26B load can take minutes)"
+        : "loading model… (first run only)";
       break;
     case "step":
       genStatus.textContent = `crystallizing… step ${m.i}/${m.total}`;
       renderCrystal(m.tokens, true);
       break;
     case "done":
-      genStatus.textContent = `done in ${m.elapsed}s`;
+      genStatus.textContent = m.stopped_early
+        ? `done in ${m.elapsed}s · stopped early at step ${m.i}/${m.total}`
+        : `done in ${m.elapsed}s`;
       genOutput.classList.remove("boiling");
       renderCrystal(m.tokens, false);
       genBtn.disabled = false;
@@ -188,8 +216,9 @@ document.getElementById("export-seed")!.addEventListener("click", async () => {
 });
 
 genBtn.addEventListener("click", () => {
-  const mode = (document.getElementById("gen-mode") as HTMLSelectElement).value;
-  const { steps, seqLen } = MODES[mode] || MODES.balanced;
+  const engine = engineSel.value;
+  const modes = ENGINE_MODES[engine] || ENGINE_MODES.plaid;
+  const { steps, seqLen } = modes[modeSel.value] || modes.balanced;
   const prompt = promptInput.value.trim() || undefined;
   genBtn.disabled = true;
   genStatus.textContent = "seeding from entropy…";
@@ -199,7 +228,7 @@ genBtn.addEventListener("click", () => {
   crystalTokens = [];
   crystalHeat = [];
   invoke("generate", {
-    steps, seqLen, nSamples: 1, prompt,
+    steps, seqLen, nSamples: 1, prompt, engine,
     temperature: +tempInput.value,
     noiseScale: +noiseInput.value,
     ddim: ddimInput.checked,

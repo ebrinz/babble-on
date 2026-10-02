@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use serde_json::json;
 use tauri::{Emitter, Manager};
 use engine::{Engine, ControlMsg, SeedReply, resolve_kind};
 use diffusion::{Diffusion, run_generation, EMBED_DIM};
@@ -18,6 +19,10 @@ mod source;
 mod dto;
 mod engine;
 mod diffusion;
+mod sidecar;
+
+/// The resident DiffusionGemma sidecar, spawned on first use.
+struct GemmaSidecar(Mutex<Option<sidecar::Sidecar>>);
 
 struct Control(Mutex<Sender<ControlMsg>>);
 
@@ -43,10 +48,15 @@ fn set_paused(paused: bool, ctrl: tauri::State<Control>) {
 }
 
 /// Kick off a diffusion generation. Pulls fresh hardware entropy from the live
-/// stats engine to seed the latent, then runs the sidecar on a background
-/// thread, streaming `diffusion` events to the webview. (`prompt` is accepted
-/// for forward-compat but unused in this unconditional first version.)
+/// stats engine (anomaly bank first, live-stream top-up), then runs the chosen
+/// engine on a background thread, streaming `diffusion` events to the webview.
+///
+/// `engine`: `"plaid"` (default) runs the in-process candle Plaid-1B engine
+/// seeded with a 16-KiB initial latent; `"gemma"` runs DiffusionGemma through
+/// the harness sidecar, which draws every random choice of its masked
+/// diffusion sampler from a `4·256·(1+2·steps)`-byte tape.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 fn generate(
     steps: Option<usize>,
     seq_len: Option<usize>,
@@ -55,9 +65,11 @@ fn generate(
     noise_scale: Option<f64>,
     ddim: Option<bool>,
     prompt: Option<String>,
+    engine: Option<String>,
     app: tauri::AppHandle,
     ctrl: tauri::State<Control>,
     diff: tauri::State<Arc<Diffusion>>,
+    gemma: tauri::State<Arc<GemmaSidecar>>,
 ) -> Result<(), String> {
     let steps = steps.unwrap_or(256);
     let seq_len = seq_len.unwrap_or(256);
@@ -65,13 +77,17 @@ fn generate(
     let temperature = temperature.unwrap_or(0.9);
     let noise_scale = noise_scale.unwrap_or(1.0);
     let ddim = ddim.unwrap_or(false);
+    let use_gemma = engine.as_deref() == Some("gemma");
 
     if !diff.try_acquire() {
         return Err("a generation is already in progress".into());
     }
 
-    // Seed bytes for the initial latent: anomaly bank first, live-stream top-up.
-    let need = n_samples * seq_len * EMBED_DIM * 4;
+    let need = if use_gemma {
+        sidecar::budget_bytes(sidecar::CANVAS_LENGTH, steps)
+    } else {
+        n_samples * seq_len * EMBED_DIM * 4
+    };
     let (etx, erx) = channel::<SeedReply>();
     let _ = ctrl
         .0
@@ -86,13 +102,75 @@ fn generate(
 
     let app2 = app.clone();
     let diff2: Arc<Diffusion> = diff.inner().clone();
+    let gemma2: Arc<GemmaSidecar> = gemma.inner().clone();
     std::thread::spawn(move || {
-        if let Err(e) = run_generation(&app2, &diff2, steps, seq_len, n_samples, temperature, noise_scale, ddim, prompt, seed) {
+        let result = if use_gemma {
+            run_gemma_generation(&app2, &gemma2, steps, prompt, seed, need)
+        } else {
+            run_generation(&app2, &diff2, steps, seq_len, n_samples, temperature, noise_scale, ddim, prompt, seed)
+        };
+        if let Err(e) = result {
             let _ = app2.emit("diffusion", serde_json::json!({"type": "error", "message": e}));
         }
         diff2.release();
     });
     Ok(())
+}
+
+/// One DiffusionGemma generation through the sidecar, forwarding its
+/// `step`/`done`/`error` messages as `diffusion` events. Spawns the sidecar
+/// on first use (emitting `loading` while the model becomes resident).
+fn run_gemma_generation(
+    app: &tauri::AppHandle,
+    gemma: &GemmaSidecar,
+    steps: usize,
+    prompt: Option<String>,
+    seed: SeedReply,
+    need: usize,
+) -> Result<(), String> {
+    let mut guard = gemma.0.lock().unwrap_or_else(|e| e.into_inner());
+    if guard.is_none() {
+        let _ = app.emit("diffusion", json!({"type": "loading"}));
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        let cfg = sidecar::resolve_config(&root)?;
+        let mut sc = sidecar::Sidecar::spawn(cfg)?;
+        sc.wait_ready(Duration::from_secs(1800))?; // the 26B load can take minutes
+        *guard = Some(sc);
+    }
+    let sc = guard.as_mut().unwrap();
+
+    let _ = app.emit(
+        "diffusion",
+        json!({"type": "seeded", "bank_fraction": seed.bank_fraction, "tags": seed.tags}),
+    );
+    let mut req = json!({"steps": steps, "seq_len": sidecar::CANVAS_LENGTH, "preview_every": 1});
+    if let Some(p) = prompt.as_deref().map(str::trim).filter(|p| !p.is_empty()) {
+        req["prompt"] = json!(p);
+    }
+    if seed.bytes.len() >= need {
+        req["entropy_hex"] = json!(sidecar::hex(&seed.bytes[..need]));
+    }
+    sc.request(&req)?;
+    loop {
+        match sc.next_event(Duration::from_secs(600)) {
+            Ok(sidecar::Event::Message(v)) => {
+                let kind = v.get("type").and_then(serde_json::Value::as_str).unwrap_or("");
+                let _ = app.emit("diffusion", &v);
+                if kind == "done" || kind == "error" {
+                    return Ok(());
+                }
+            }
+            Ok(sidecar::Event::Ready { .. }) => continue,
+            Ok(sidecar::Event::Exit) => {
+                *guard = None;
+                return Err("DiffusionGemma sidecar exited (see the terminal for its stderr)".into());
+            }
+            Err(e) => {
+                *guard = None;
+                return Err(e);
+            }
+        }
+    }
 }
 
 fn now_ms() -> u64 {
@@ -180,6 +258,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(Control(Mutex::new(tx)))
         .manage(Arc::new(Diffusion::new()))
+        .manage(Arc::new(GemmaSidecar(Mutex::new(None))))
         .invoke_handler(tauri::generate_handler![
             start_source, reset, set_window, set_paused, generate,
             export_seed, start_recording, stop_recording

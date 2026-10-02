@@ -103,12 +103,26 @@ CUDA box for the activation captures.
 `steps_to_commit` per position is the direct analogue of the app's
 crystallisation heat map.
 
-## Sidecar mode (phase 2 of the app engine swap)
+## Sidecar mode (the app's DiffusionGemma engine)
 
-`python -m babble_harness.cli serve` speaks the newline-JSON protocol in
-[`../sidecar/README.md`](../sidecar/README.md) (`steps`, `seq_len`,
-`entropy_hex`, `prompt` → `step`/`done` events), so the Tauri backend can
-spawn it in place of the Plaid engine with the entropy it already draws.
+`python -m babble_harness.cli serve --model diffusion_gemma [--quant …]`
+speaks the newline-JSON protocol in [`../sidecar/README.md`](../sidecar/README.md)
+(`steps`, `seq_len`, `entropy_hex`, `prompt` → `step`/`done` events). The
+Tauri app spawns it when the engine drop-down is set to DiffusionGemma,
+finding this directory's `.venv` in a dev checkout. Environment knobs read by
+the app: `BABBLE_SIDECAR_MODEL` (`diffusion_gemma` | `tiny` | `stub`) and
+`BABBLE_SIDECAR_CMD` (full command line; overrides everything, e.g. to point
+at an interpreter on a GPU box over SSH). `tiny` lets you exercise the whole
+app path without weights.
+
+## Planning a run
+
+- `python -m babble_harness.cli power` prints, per effect size, the seeds
+  per condition the Mann-Whitney and probe tests need for 80 % power and the
+  stream that costs at your device rate (`--rate`).
+- `python -m babble_harness.cli record-sim out.bbrec --seconds 600 --bias 0.52 --bias-from 300`
+  writes a simulated recording (healthy, then biased) to dry-run labelling,
+  seed cutting and a full `run --model tiny` before touching hardware.
 
 ## Caveats
 

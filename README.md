@@ -121,12 +121,24 @@ Both formats are defined once in the dependency-light [`bbrec`](bbrec/) crate
 and mirrored in Python; the bytes → uniform mapping is pinned by
 `docs/contract/noise_vectors.json` on both sides.
 
-## DiffusionGemma status
+## DiffusionGemma in the app
 
-**Generate** still runs the Plaid-1B candle engine. The DiffusionGemma port is
-staged: the harness contains the entropy-driven sampler, a Transformers
-adapter and a sidecar mode speaking the app's existing protocol; wiring the
-app to spawn it (or a candle port of the 26B MoE) is phase 2.
+The engine drop-down in the diffusion pane selects **Plaid-1B · candle**
+(in-process, 16 KiB latent seed) or **DiffusionGemma · sidecar**. The latter
+spawns the harness's `serve` mode on first use and keeps it resident; every
+random choice of DiffusionGemma's masked-diffusion sampler (initial canvas,
+per-position token draw, renoising) comes from a `4·256·(1+2·steps)`-byte
+entropy tape drawn bank-first exactly like the Plaid seed. Step events
+stream the argmax canvas so the crystallisation view works unchanged, and
+`done` reports early stopping.
+
+Setup: create the harness venv (see [`harness/README.md`](harness/README.md),
+including the `[model]` extra for the real weights). The app finds
+`harness/.venv/bin/python` in a dev checkout; set `BABBLE_SIDECAR_MODEL`
+(`diffusion_gemma` default, `tiny` or `stub` for weight-free development) or
+`BABBLE_SIDECAR_CMD` (a full command line, for a bundled app or a remote
+GPU box's interpreter). The model load for the 26B checkpoint takes minutes
+on first generate; the status line says so.
 
 ## Visual 3-state smoke (user-run)
 
@@ -152,9 +164,9 @@ Also user-run, for the same reason as above:
 |-------|--------|
 | `npm run build` (vite) | ✓ pass |
 | `cargo build --release` | ✓ pass |
-| `cargo test` (src-tauri) | ✓ 28/28 pass (Linux, CPU) |
+| `cargo test` (src-tauri) | ✓ 33/33 pass (Linux, CPU; includes a sidecar round trip against the harness stub) |
 | `cargo test` (bbrec) | ✓ 11/11 pass |
-| `harness/` pytest | ✓ 34/34 pass |
+| `harness/` pytest | ✓ 50/50 pass (adapter on a tiny DiffusionGemma, parity vs. Transformers `generate`) |
 | `npm run test` (vitest) | ✓ 7/7 pass |
 | Visual 3-state smoke | **user-run** (see above) |
 | Anomaly bank smoke | **user-run** (see above) |

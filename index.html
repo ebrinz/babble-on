@@ -35,14 +35,13 @@
       <section class="panel gen">
         <h2>Diffusion · text crystallizing from hardware entropy</h2>
         <div class="gen-controls">
+          <select id="gen-engine" title="plaid: in-process candle engine, 16 KiB latent seed · gemma: DiffusionGemma via the harness sidecar, every sampler draw from a 97 KiB entropy tape">
+            <option value="plaid" selected>Plaid-1B · candle</option>
+            <option value="gemma">DiffusionGemma · sidecar</option>
+          </select>
           <input id="prompt" type="text"
                  placeholder="prompt (inpainted as a locked prefix) — leave blank for pure entropy babble" />
-          <select id="gen-mode">
-            <option value="fast">fast · 48 steps</option>
-            <option value="balanced" selected>balanced · 192 steps</option>
-            <option value="quality">quality · 384 steps</option>
-            <option value="ultra">ultra · 768 steps</option>
-          </select>
+          <select id="gen-mode"></select>
           <button id="gen-btn">Generate</button>
           <button id="export-seed" title="spend the anomaly bank into a seed bundle (97 KiB, one DiffusionGemma canvas) for the harness">export seed</button>
           <span id="gen-status">idle</span>
