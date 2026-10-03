@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = ["numpy>=1.26", "torch>=2.4"]
 
 [project.optional-dependencies]
-model = ["transformers>=5.8.0.dev0", "accelerate", "safetensors", "sentencepiece"]
+model = ["transformers>=5.18", "accelerate", "safetensors", "sentencepiece", "pillow", "huggingface_hub"]
 dev = ["pytest"]
 
 [project.scripts]

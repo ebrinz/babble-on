@@ -38,7 +38,7 @@ cd harness
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -e ".[dev]"          # numpy, torch, pytest
 uv pip install --python .venv/bin/python -e ".[model]"        # transformers ≥ 5.8 for the real model
-.venv/bin/python -m pytest -q                                 # 34 tests, no weights needed
+.venv/bin/python -m pytest -q                                 # no weights needed (tokenizer tests skip when not cached)
 ```
 
 `--model stub` runs the whole pipeline on a toy denoiser; `--model tiny`
@@ -88,9 +88,18 @@ CUDA box for the activation captures.
    Writes `samples.jsonl`, `activations/*.npz`, `manifest.json`, and a
    `report.md` (`analyze` re-runs the statistics on an existing run).
 6. **Read `report.md`.** Per-condition medians, Mann–Whitney tests between
-   the chosen pair, and a cross-validated linear probe on pooled residual
-   stream activations against a label-permutation null. Treat a hit as real
-   only if it survives against both `prng` and `remote`.
+   the chosen pair, and mass-mean probes (scalar features, first- and
+   last-step pooled activations) against label-permutation nulls. Figures
+   are SVG under `report-assets/` (`svg.py`): transparent, mid-tone inks, a
+   palette validated for light and dark pages, animated once where motion
+   carries meaning (lines drawing on, the acceptance raster committing step
+   by step). Treat a hit as real only if it survives against both `prng` and
+   `remote`, and remember ~15 scalars means ~1 false positive at p < 0.05.
+7. **The log.** `analyze` appends a summary entry to
+   `../docs/experiments/LOG.md` (override with `--log-file`, disable with
+   `BABBLE_EXPERIMENT_LOG=0`). Fill in its `outcome` line; copy reports worth
+   keeping to `../docs/experiments/runs/<name>/`. The first entry is the
+   tiny-model dry run.
 
 ## What is captured per step
 
@@ -127,9 +136,10 @@ app path without weights.
 ## Caveats
 
 - `models/diffusion_gemma.py` is validated against the Transformers 5.18
-  classes on a tiny random model (`tests/test_hf_adapter.py`) and
-  step-for-step against the reference `generate` loop with its RNG routed
-  through the tape (`tests/test_reference_parity.py`). It has not yet been
-  run against the real checkpoint or on a GPU.
+  classes on a tiny random model (`tests/test_hf_adapter.py`), step-for-step
+  against the reference `generate` loop with its RNG routed through the tape
+  (`tests/test_reference_parity.py`), and against the real tokenizer and chat
+  template (`tests/test_real_tokenizer.py`, needs the tokenizer files cached).
+  It has not yet been run against the real weights or on a GPU.
 - One canvas per sample (256 tokens). Longer, block-autoregressive generation
   is out of scope.

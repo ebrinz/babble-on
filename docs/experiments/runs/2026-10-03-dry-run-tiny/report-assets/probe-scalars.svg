@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" width="760" height="300" role="img" aria-label="Probe null — scalars">
+<style>
+  .t { font: 600 15px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #7f8c88; }
+  .s { font: 400 12px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #898781; }
+  .ax { font: 400 11px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #898781; font-variant-numeric: tabular-nums; }
+  .lg { font: 400 12px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #898781; }
+  .grid { stroke: #898781; stroke-opacity: 0.22; stroke-width: 1; }
+  .axis { stroke: #898781; stroke-opacity: 0.45; stroke-width: 1; }
+  .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes appear { to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .anim { animation: none !important; stroke-dashoffset: 0 !important; opacity: 1 !important; }
+  }
+</style>
+<text x="56" y="22" class="t">Probe null — scalars</text>
+<text x="56" y="37" class="s">permutation null of cross-validated accuracy; gold line = observed</text>
+<line x1="56" x2="736" y1="252.0" y2="252.0" class="grid"/>
+<text x="48" y="256.0" text-anchor="end" class="ax">0</text>
+<line x1="56" x2="736" y1="182.7" y2="182.7" class="grid"/>
+<text x="48" y="186.7" text-anchor="end" class="ax">20</text>
+<line x1="56" x2="736" y1="113.3" y2="113.3" class="grid"/>
+<text x="48" y="117.3" text-anchor="end" class="ax">40</text>
+<line x1="56" x2="736" y1="44.0" y2="44.0" class="grid"/>
+<text x="48" y="48.0" text-anchor="end" class="ax">60</text>
+<text x="73.0" y="268" text-anchor="middle" class="ax">0.03</text>
+<text x="141.0" y="268" text-anchor="middle" class="ax">0.12</text>
+<text x="209.0" y="268" text-anchor="middle" class="ax">0.23</text>
+<path d="M265.0,252 V248.5 Q265.0,245.1 268.5,245.1 H285.5 Q289.0,245.1 289.0,248.5 V252 Z" fill="#3987e5" class="anim" opacity="0" style="animation: appear 0.5s ease-out 0.12s forwards"/>
+<text x="277.0" y="268" text-anchor="middle" class="ax">0.33</text>
+<path d="M299.0,252 V217.9 Q299.0,213.9 303.0,213.9 H319.0 Q323.0,213.9 323.0,217.9 V252 Z" fill="#3987e5" class="anim" opacity="0" style="animation: appear 0.5s ease-out 0.14s forwards"/>
+<path d="M333.0,252 V127.7 Q333.0,123.7 337.0,123.7 H353.0 Q357.0,123.7 357.0,127.7 V252 Z" fill="#3987e5" class="anim" opacity="0" style="animation: appear 0.5s ease-out 0.16s forwards"/>
+<text x="345.0" y="268" text-anchor="middle" class="ax">0.43</text>
+<path d="M367.0,252 V110.4 Q367.0,106.4 371.0,106.4 H387.0 Q391.0,106.4 391.0,110.4 V252 Z" fill="#3987e5" class="anim" opacity="0" style="animation: appear 0.5s ease-out 0.18s forwards"/>
+<path d="M401.0,252 V58.4 Q401.0,54.4 405.0,54.4 H421.0 Q425.0,54.4 425.0,58.4 V252 Z" fill="#3987e5" class="anim" opacity="0" style="animation: appear 0.5s ease-out 0.20s forwards"/>
+<text x="413.0" y="268" text-anchor="middle" class="ax">0.53</text>
+<path d="M435.0,252 V100.0 Q435.0,96.0 439.0,96.0 H455.0 Q459.0,96.0 459.0,100.0 V252 Z" fill="#3987e5" class="anim" opacity="0" style="animation: appear 0.5s ease-out 0.22s forwards"/>
+<path d="M469.0,252 V235.2 Q469.0,231.2 473.0,231.2 H489.0 Q493.0,231.2 493.0,235.2 V252 Z" fill="#3987e5" class="anim" opacity="0" style="animation: appear 0.5s ease-out 0.24s forwards"/>
+<text x="481.0" y="268" text-anchor="middle" class="ax">0.62</text>
+<text x="549.0" y="268" text-anchor="middle" class="ax">0.73</text>
+<text x="617.0" y="268" text-anchor="middle" class="ax">0.83</text>
+<text x="685.0" y="268" text-anchor="middle" class="ax">0.93</text>
+<line x1="56" x2="736" y1="252" y2="252" class="axis"/>
+<line x1="431.4" x2="431.4" y1="44" y2="252" stroke="#c98500" stroke-width="2"/>
+<text x="437.4" y="56" class="lg">observed 0.55</text>
+<text x="396.0" y="292" text-anchor="middle" class="s">accuracy</text>
+<text transform="translate(14 148.0) rotate(-90)" text-anchor="middle" class="s">permutations</text>
+</svg>

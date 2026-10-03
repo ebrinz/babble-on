@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:ui": "vite build && node tests/ui/headless.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -16,8 +17,9 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
-    "vite": "^6.0.3",
+    "playwright": "^1.56.1",
     "typescript": "~5.6.2",
+    "vite": "^6.0.3",
     "vitest": "^2.0.0"
   }
 }

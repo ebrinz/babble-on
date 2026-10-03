@@ -19,6 +19,7 @@ import numpy as np
 from .analysis import (
     mann_whitney, pooled_activation, probe_with_permutation_null, sample_scalars, text_scalars,
 )
+from .figures import duty_figure, write_run_figures
 from .noise import EntropyExhausted, EntropyTape, budget_bytes
 from .recording import read_recording
 from .sampler import SamplerConfig, sample_canvas
@@ -38,6 +39,7 @@ def build_conditions(cfg: SamplerConfig, recordings: list[str], remote: list[str
                 t.meta["recording"] = path
             conds[g].extend(tapes)
         log(f"{path}: {sum(len(f.data) for f in frames)} bytes → in_band {len(got['in_band'])}, out_band {len(got['out_band'])} seeds")
+    conds["_recordings"] = recordings + remote  # consumed by run_experiment for the manifest
     for path in remote:
         header, frames = read_recording(path)
         got = seeds_from_recording(header, frames, need, max_per_group, allow_concat, label_prefix="remote_")
@@ -64,10 +66,12 @@ def run_experiment(out_dir: str | Path, denoiser, cfg: SamplerConfig, conditions
                    prompts: list[str], model_name: str, save_activations: bool = True, log=print) -> Path:
     out = Path(out_dir)
     (out / "activations").mkdir(parents=True, exist_ok=True)
+    recordings = conditions.pop("_recordings", [])
     manifest = {
         "model": model_name, "sampler": asdict(cfg), "prompts": prompts,
         "budget_bytes": budget_bytes(cfg.canvas_length, cfg.max_denoising_steps),
-        "conditions": {k: len(v) for k, v in conditions.items()}, "started_at": time.time(), "samples": 0, "skipped": 0,
+        "conditions": {k: len(v) for k, v in conditions.items()}, "recordings": list(recordings),
+        "started_at": time.time(), "samples": 0, "skipped": 0,
     }
     n = 0
     with open(out / "samples.jsonl", "w") as f:
@@ -94,6 +98,7 @@ def run_experiment(out_dir: str | Path, denoiser, cfg: SamplerConfig, conditions
                         "n_steps": res.n_steps, "stopped_early": res.stopped_early, "elapsed_s": round(dt, 3),
                         "scalars": {**sample_scalars(res), **text_scalars(ids)},
                         "per_step": {"accepted": [s.n_accepted for s in res.steps],
+                                     "accepted_mask": ["".join("1" if a else "0" for a in s.accepted) for s in res.steps],
                                      "mean_entropy": [s.mean_entropy for s in res.steps],
                                      "temperature": [s.temperature for s in res.steps]},
                         "steps_to_commit": res.steps_to_commit().tolist(),
@@ -119,14 +124,48 @@ def run_experiment(out_dir: str | Path, denoiser, cfg: SamplerConfig, conditions
 
 
 def analyze_run(run_dir: str | Path, pair: tuple[str, str] = ("in_band", "out_band"), n_perm: int = 200,
-                log=print) -> dict:
+                log=print, log_file: str | Path | None = None) -> dict:
     run = Path(run_dir)
     rows = [json.loads(l) for l in open(run / "samples.jsonl") if l.strip()]
+    manifest = json.loads((run / "manifest.json").read_text()) if (run / "manifest.json").exists() else {}
     conds = sorted({r["condition"] for r in rows})
     keys = sorted({k for r in rows for k in r["scalars"]})
     by = {c: [r for r in rows if r["condition"] == c] for c in conds}
-    report: dict = {"run": str(run), "n": {c: len(v) for c, v in by.items()}, "scalars": {}, "tests": {}, "probe": None}
-    lines = [f"# babble-on run report — `{run.name}`", "", f"samples: " + ", ".join(f"{c}={len(v)}" for c, v in by.items()), ""]
+    report: dict = {"run": str(run), "model": manifest.get("model"), "n": {c: len(v) for c, v in by.items()},
+                    "scalars": {}, "tests": {}, "probe": None}
+    probe_nulls: dict = {}
+    model = manifest.get("model", "?")
+    when = time.strftime("%Y-%m-%d %H:%M", time.localtime(manifest.get("finished_at", time.time())))
+    figs = write_run_figures(run, rows, title="babble-on", subtitle=f"{run.name} · {model} · {when}")
+    lines = [f"![{run.name}]({figs['header']})", "", f"# Run report — `{run.name}`", "",
+             f"model `{model}` · {when} · samples: " + ", ".join(f"{c}={len(v)}" for c, v in by.items()), ""]
+    if manifest.get("sampler"):
+        sp = manifest["sampler"]
+        lines += [f"sampler: canvas {sp.get('canvas_length')} · ≤ {sp.get('max_denoising_steps')} steps · "
+                  f"T {sp.get('t_max')}→{sp.get('t_min')} · entropy bound {sp.get('entropy_bound')} · "
+                  f"early stop {'on' if sp.get('early_stop') else 'off'} · budget {manifest.get('budget_bytes')} bytes/sample", ""]
+    for path in manifest.get("recordings", []):
+        try:
+            from .coherence import duty_cycle, label_frames
+            header, frames = read_recording(path)
+            labelled, walk = label_frames(frames, header)
+            d = duty_cycle(labelled)
+            name = Path(path).stem
+            (run / "report-assets" / f"duty-{name}.svg").write_text(duty_figure(d, header.source))
+            lines += [f"![duty cycle {name}](report-assets/duty-{name}.svg)", "",
+                      f"`{path}`: {sum(f.length for f in labelled):,} bytes, {walk.k} trials, final σ {walk.sigma:+.2f} ({walk.band})", ""]
+        except (OSError, ValueError) as e:  # recording moved since the run
+            lines += [f"_recording `{path}` not readable for the duty-cycle figure: {e}_", ""]
+    if rows:
+        lines += ["## Crystallisation", "", f"![entropy]({figs['entropy']})", "", f"![accepted]({figs['accepted']})", ""]
+        for c in conds:
+            if f"raster-{c}" in figs:
+                lines += [f"![acceptance raster {c}]({figs[f'raster-{c}']})", ""]
+        for c in conds:
+            if f"commit-{c}" in figs:
+                lines += [f"![commit order {c}]({figs[f'commit-{c}']})", ""]
+        for k in sorted(k for k in figs if k.startswith("steps-")):
+            lines += [f"![steps]({figs[k]})", ""]
     lines += ["## Per-condition medians", "", "| scalar | " + " | ".join(conds) + " |", "|---|" + "---|" * len(conds)]
     for k in keys:
         meds = []
@@ -157,7 +196,8 @@ def analyze_run(run_dir: str | Path, pair: tuple[str, str] = ("in_band", "out_ba
         lines += ["", "## Linear probes (mass-mean, cross-validated, permutation null)", ""]
         if len(Xs) >= 6 and len(set(ys)) == 2 and Xs.shape[1] > 0:
             pr = probe_with_permutation_null(Xs, np.array(ys), n_perm=n_perm)
-            report["probes"]["scalars"] = asdict(pr)
+            report["probes"]["scalars"] = pr.summary()
+            probe_nulls["scalars"] = (np.array(pr.null), pr.accuracy)
             lines.append(f"- **scalar features** ({pr.dim} dims): accuracy **{pr.accuracy:.3f}** vs null {pr.null_mean:.3f} ± {pr.null_sd:.3f} "
                          f"(p = {pr.p_value:.3g}, n = {pr.n})")
         # Probe 2: pooled residual-stream activations, first and last step.
@@ -172,12 +212,18 @@ def analyze_run(run_dir: str | Path, pair: tuple[str, str] = ("in_band", "out_ba
                             X.append(z[key]); y.append(lab)
             if len(X) >= 6 and len(set(y)) == 2:
                 pr = probe_with_permutation_null(np.stack(X), np.array(y), n_perm=n_perm)
-                report["probes"][key] = asdict(pr)
+                report["probes"][key] = pr.summary()
+                probe_nulls[key] = (np.array(pr.null), pr.accuracy)
                 lines.append(f"- **{label}** ({pr.dim} dims): accuracy **{pr.accuracy:.3f}** vs null {pr.null_mean:.3f} ± {pr.null_sd:.3f} "
                              f"(p = {pr.p_value:.3g}, n = {pr.n}, |mean diff| = {pr.mean_diff_norm:.3g})")
             else:
                 lines.append(f"- {label}: skipped (need ≥ 6 samples with activations across both conditions)")
         report["probe"] = report["probes"].get("pooled_first")
+        if probe_nulls:
+            pf = write_run_figures(run, [], probe_nulls, title="babble-on", subtitle=f"{run.name} · {model} · {when}")
+            lines.append("")
+            for name in probe_nulls:
+                lines += [f"![probe null {name}]({pf[f'probe-{name}']})", ""]
     lines += ["", "## Reading the numbers", "",
               "- `accepted_step0`, `commit_step_mean`: how fast the canvas crystallises — the direct analogue of the Plaid heat map.",
               "- `entropy_auc`, `n_steps`: how much uncertainty the model carried before early stopping.",
@@ -186,5 +232,50 @@ def analyze_run(run_dir: str | Path, pair: tuple[str, str] = ("in_band", "out_ba
               "- Multiple comparisons: with ~15 scalars, expect ~1 false positive at p < 0.05 by chance."]
     (run / "report.md").write_text("\n".join(lines) + "\n")
     (run / "report.json").write_text(json.dumps(report, indent=1, default=float))
+    entry = log_entry(run, report, pair, when)
+    target = find_log_file(run, log_file)
+    if target:
+        with open(target, "a") as f:
+            f.write(entry)
+        log(f"logged to {target}")
     log("\n".join(lines))
     return report
+
+
+def find_log_file(run: Path, explicit: str | Path | None = None) -> Path | None:
+    """`BABBLE_EXPERIMENT_LOG`, an explicit path, or the repo's
+    docs/experiments/LOG.md found by walking up from the run directory (and
+    from this package). `BABBLE_EXPERIMENT_LOG=0` disables logging."""
+    import os
+    env = os.environ.get("BABBLE_EXPERIMENT_LOG")
+    if env == "0":
+        return None
+    if explicit:
+        return Path(explicit)
+    if env:
+        return Path(env)
+    for start in (run.resolve(), Path(__file__).resolve()):
+        for d in [start, *start.parents]:
+            cand = d / "docs" / "experiments" / "LOG.md"
+            if cand.exists():
+                return cand
+    return None
+
+
+def log_entry(run: Path, report: dict, pair: tuple[str, str], when: str) -> str:
+    a, b = pair
+    sig = [(k, v) for k, v in report.get("tests", {}).items() if v.get("p") is not None and v["p"] < 0.05]
+    sig.sort(key=lambda kv: kv[1]["p"])
+    counts = ", ".join(f"{c}={n}" for c, n in report.get("n", {}).items())
+    lines = [f"\n## {when} · `{run.name}` · model `{report.get('model', '?')}`", "",
+             f"- conditions: {counts}; compared `{a}` vs `{b}`"]
+    if sig:
+        lines.append("- scalars that moved (p < 0.05): " + "; ".join(
+            f"`{k}` {v['median_a']:.3g} → {v['median_b']:.3g} (p={v['p']:.2g})" for k, v in sig[:6]))
+    else:
+        lines.append("- no scalar differed at p < 0.05")
+    for name, pr in (report.get("probes") or {}).items():
+        lines.append(f"- probe `{name}`: accuracy {pr['accuracy']:.2f} vs null {pr['null_mean']:.2f}±{pr['null_sd']:.2f} (p={pr['p_value']:.2g}, n={pr['n']})")
+    lines.append(f"- report: `{run}/report.md` (copy to docs/experiments/runs/ to keep it)")
+    lines.append("- outcome: _(fill in: what this means for the hypothesis, and what to try next)_")
+    return "\n".join(lines) + "\n"

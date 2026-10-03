@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 320" width="760" height="320" role="img" aria-label="Tokens accepted per step">
+<style>
+  .t { font: 600 15px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #7f8c88; }
+  .s { font: 400 12px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #898781; }
+  .ax { font: 400 11px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #898781; font-variant-numeric: tabular-nums; }
+  .lg { font: 400 12px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #898781; }
+  .grid { stroke: #898781; stroke-opacity: 0.22; stroke-width: 1; }
+  .axis { stroke: #898781; stroke-opacity: 0.45; stroke-width: 1; }
+  .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes appear { to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .anim { animation: none !important; stroke-dashoffset: 0 !important; opacity: 1 !important; }
+  }
+</style>
+<text x="56" y="22" class="t">Tokens accepted per step</text>
+<text x="56" y="37" class="s">entropy-bound selection; mean across samples</text>
+<line x1="56" x2="650" y1="276.0" y2="276.0" class="grid"/>
+<text x="48" y="280.0" text-anchor="end" class="ax">0</text>
+<line x1="56" x2="650" y1="233.2" y2="233.2" class="grid"/>
+<text x="48" y="237.2" text-anchor="end" class="ax">0.2</text>
+<line x1="56" x2="650" y1="190.4" y2="190.4" class="grid"/>
+<text x="48" y="194.4" text-anchor="end" class="ax">0.4</text>
+<line x1="56" x2="650" y1="147.6" y2="147.6" class="grid"/>
+<text x="48" y="151.6" text-anchor="end" class="ax">0.6</text>
+<line x1="56" x2="650" y1="104.8" y2="104.8" class="grid"/>
+<text x="48" y="108.8" text-anchor="end" class="ax">0.8</text>
+<line x1="56" x2="650" y1="62.0" y2="62.0" class="grid"/>
+<text x="48" y="66.0" text-anchor="end" class="ax">1</text>
+<text x="56.0" y="292" text-anchor="middle" class="ax">0</text>
+<text x="225.7" y="292" text-anchor="middle" class="ax">2</text>
+<text x="395.4" y="292" text-anchor="middle" class="ax">4</text>
+<text x="565.1" y="292" text-anchor="middle" class="ax">6</text>
+<line x1="56" x2="650" y1="276" y2="276" class="axis"/>
+<text x="353.0" y="312" text-anchor="middle" class="s">step</text>
+<text transform="translate(14 169.0) rotate(-90)" text-anchor="middle" class="s">accepted positions</text>
+<path d="M 56.0,62.0 L 140.9,62.0 L 225.7,62.0 L 310.6,62.0 L 395.4,62.0 L 480.3,62.0 L 565.1,62.0 L 650.0,62.0" stroke="#199e70" class="line anim" stroke-dasharray="595" stroke-dashoffset="595" style="animation: draw 1.4s ease-out 0.00s forwards"/>
+<circle cx="650.0" cy="62.0" r="4" fill="#199e70"/>
+<text x="658.0" y="66.0" class="lg">in_band 1</text>
+<line x1="56" x2="70" y1="48" y2="48" stroke="#199e70" stroke-width="2"/>
+<text x="74" y="52" class="lg">in_band</text>
+<path d="M 56.0,62.0 L 140.9,62.0 L 225.7,62.0 L 310.6,62.0 L 395.4,62.0 L 480.3,62.0 L 565.1,62.0 L 650.0,62.0" stroke="#c98500" class="line anim" stroke-dasharray="595" stroke-dashoffset="595" style="animation: draw 1.4s ease-out 0.15s forwards"/>
+<circle cx="650.0" cy="62.0" r="4" fill="#c98500"/>
+<line x1="152" x2="166" y1="48" y2="48" stroke="#c98500" stroke-width="2"/>
+<text x="170" y="52" class="lg">out_band</text>
+<path d="M 56.0,62.0 L 140.9,62.0 L 225.7,62.0 L 310.6,62.0 L 395.4,62.0 L 480.3,62.0 L 565.1,62.0 L 650.0,62.0" stroke="#3987e5" class="line anim" stroke-dasharray="595" stroke-dashoffset="595" style="animation: draw 1.4s ease-out 0.30s forwards"/>
+<circle cx="650.0" cy="62.0" r="4" fill="#3987e5"/>
+<line x1="248" x2="262" y1="48" y2="48" stroke="#3987e5" stroke-width="2"/>
+<text x="266" y="52" class="lg">prng</text>
+<path d="M 56.0,62.0 L 140.9,62.0 L 225.7,62.0 L 310.6,62.0 L 395.4,62.0 L 480.3,62.0 L 565.1,62.0 L 650.0,62.0" stroke="#d95926" class="line anim" stroke-dasharray="595" stroke-dashoffset="595" style="animation: draw 1.4s ease-out 0.45s forwards"/>
+<circle cx="650.0" cy="62.0" r="4" fill="#d95926"/>
+<line x1="344" x2="358" y1="48" y2="48" stroke="#d95926" stroke-width="2"/>
+<text x="362" y="52" class="lg">remote</text>
+</svg>

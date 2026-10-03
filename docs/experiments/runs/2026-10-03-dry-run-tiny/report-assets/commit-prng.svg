@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 80" width="760" height="80" role="img" aria-label="Steps to commit — prng">
+<style>
+  .t { font: 600 15px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #7f8c88; }
+  .s { font: 400 12px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #898781; }
+  .ax { font: 400 11px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #898781; font-variant-numeric: tabular-nums; }
+  .lg { font: 400 12px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #898781; }
+  .grid { stroke: #898781; stroke-opacity: 0.22; stroke-width: 1; }
+  .axis { stroke: #898781; stroke-opacity: 0.45; stroke-width: 1; }
+  .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes appear { to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .anim { animation: none !important; stroke-dashoffset: 0 !important; opacity: 1 !important; }
+  }
+</style>
+<text x="20" y="24" class="t">Steps to commit — prng</text><text x="20" y="44" class="s">40 samples (rows) × canvas positions (columns); cells appear in the order the model committed them</text><text x="20" y="66" class="s">no cells to draw — no position kept its final token from an accepted step onward (the model never stabilised)</text>
+</svg>

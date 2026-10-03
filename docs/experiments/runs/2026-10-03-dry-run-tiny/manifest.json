@@ -1,0 +1,33 @@
+{
+ "model": "tiny",
+ "sampler": {
+  "canvas_length": 16,
+  "vocab_size": 256,
+  "max_denoising_steps": 8,
+  "t_max": 0.8,
+  "t_min": 0.4,
+  "entropy_bound": 0.1,
+  "confidence_threshold": 0.005,
+  "stability_threshold": 1,
+  "early_stop": true
+ },
+ "prompts": [
+  "The sea at night",
+  ""
+ ],
+ "budget_bytes": 1088,
+ "conditions": {
+  "in_band": 24,
+  "out_band": 24,
+  "prng": 24,
+  "remote": 24
+ },
+ "recordings": [
+  "runs/device.bbrec",
+  "runs/remote.bbrec"
+ ],
+ "started_at": 1791063083.3149207,
+ "samples": 192,
+ "skipped": 0,
+ "finished_at": 1791063095.407719
+}

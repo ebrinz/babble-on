@@ -32,7 +32,10 @@ def test_label_command(tmp_path, capsys):
     assert out["seeds_available"]["out_band"] >= 1 and out["seed_bytes"] == 4 * 16 * 13
 
 
-def test_run_and_analyze_with_stub_end_to_end(tmp_path):
+def test_run_and_analyze_with_stub_end_to_end(tmp_path, monkeypatch):
+    logf = tmp_path / "LOG.md"
+    logf.write_text("# log\n")
+    monkeypatch.setenv("BABBLE_EXPERIMENT_LOG", str(logf))
     rec = tmp_path / "r.bbrec"
     make_recording(rec, 512 * 120, biased_from=512 * 60, seed=3)
     out = tmp_path / "run1"
@@ -54,8 +57,22 @@ def test_run_and_analyze_with_stub_end_to_end(tmp_path):
     rep = json.loads((out / "report.json").read_text())
     assert "n_steps" in rep["tests"]
     assert "scalars" in rep["probes"] and "pooled_first" in rep["probes"]
-    # re-analyze with a different pair
+    md = (out / "report.md").read_text()
+    assert md.startswith("![") and "report-assets/header.svg" in md and "report-assets/entropy.svg" in md
+    import xml.etree.ElementTree as ET
+    svgs = list((out / "report-assets").glob("*.svg"))
+    assert {"header.svg", "entropy.svg", "accepted.svg", "commit-in_band.svg", "raster-in_band.svg", "probe-scalars.svg"} <= {p.name for p in svgs}
+    assert len(rows[0]["per_step"]["accepted_mask"][0]) == 16
+    for p in svgs:
+        ET.fromstring(p.read_text())  # well-formed
+    entry = logf.read_text()
+    assert "## " in entry and "`run1`" in entry and "compared `in_band` vs `out_band`" in entry and "probe `scalars`" in entry
+    # re-analyze with a different pair → a second log entry
     assert main(["analyze", str(out), "--pair", "in_band", "prng", "--perm", "20"]) == 0
+    assert logf.read_text().count("## ") == 2
+    monkeypatch.setenv("BABBLE_EXPERIMENT_LOG", "0")
+    assert main(["analyze", str(out), "--perm", "10"]) == 0
+    assert logf.read_text().count("## ") == 2  # disabled
 
 
 def test_serve_protocol_with_stub(tmp_path):
@@ -74,8 +91,9 @@ def test_serve_protocol_with_stub(tmp_path):
     assert done[-1]["seed"] == "prng"  # the empty request falls back to PRNG and says so
 
 
-def test_run_with_tiny_real_adapter(tmp_path):
+def test_run_with_tiny_real_adapter(tmp_path, monkeypatch):
     pytest.importorskip("transformers")
+    monkeypatch.setenv("BABBLE_EXPERIMENT_LOG", "0")
     out = tmp_path / "tiny"
     rc = main(["run", str(out), "--model", "tiny", "--prng", "3", "--steps", "3", "--prompt", "sea", "--no-early-stop"])
     assert rc == 0

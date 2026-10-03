@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 110" width="760" height="110" role="img" aria-label="Share of recorded bytes by coherence band">
+<style>
+  .t { font: 600 15px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #7f8c88; }
+  .s { font: 400 12px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #898781; }
+  .ax { font: 400 11px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #898781; font-variant-numeric: tabular-nums; }
+  .lg { font: 400 12px system-ui, -apple-system, 'Segoe UI', sans-serif; fill: #898781; }
+  .grid { stroke: #898781; stroke-opacity: 0.22; stroke-width: 1; }
+  .axis { stroke: #898781; stroke-opacity: 0.45; stroke-width: 1; }
+  .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes appear { to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .anim { animation: none !important; stroke-dashoffset: 0 !important; opacity: 1 !important; }
+  }
+</style>
+<text x="24" y="22" class="t">Share of recorded bytes by coherence band</text>
+<text x="24" y="37" class="s">source: bad(p1=0.5004)</text>
+<rect x="24.0" y="48" width="618.2" height="18" rx="3" fill="#0ca30c"/>
+<rect x="24" y="80" width="10" height="10" rx="2" fill="#0ca30c"/>
+<text x="39" y="89" class="lg">in-band 87.1%</text>
+<rect x="644.2" y="48" width="28.0" height="18" rx="3" fill="#fab219"/>
+<rect x="174" y="80" width="10" height="10" rx="2" fill="#fab219"/>
+<text x="189" y="89" class="lg">95% 4.2%</text>
+<rect x="674.1" y="48" width="33.6" height="18" rx="3" fill="#ec835a"/>
+<rect x="324" y="80" width="10" height="10" rx="2" fill="#ec835a"/>
+<text x="339" y="89" class="lg">99% 5.0%</text>
+<rect x="709.7" y="48" width="24.3" height="18" rx="3" fill="#d03b3b"/>
+<rect x="474" y="80" width="10" height="10" rx="2" fill="#d03b3b"/>
+<text x="489" y="89" class="lg">99.9% 3.7%</text>
+</svg>

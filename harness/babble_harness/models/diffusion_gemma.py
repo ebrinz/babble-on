@@ -34,6 +34,17 @@ MODEL_ID = "google/diffusiongemma-26B-A4B-it"
 NVFP4_MODEL_ID = "nvidia/diffusiongemma-26B-A4B-it-NVFP4"
 
 
+def load_processor(model_id: str = MODEL_ID):
+    """The multimodal processor (needs Pillow); falls back to the text
+    tokenizer, which carries the same chat template, for text-only use."""
+    from transformers import AutoProcessor, AutoTokenizer
+
+    try:
+        return AutoProcessor.from_pretrained(model_id)
+    except ImportError:  # Pillow missing: text-only is all the harness needs
+        return AutoTokenizer.from_pretrained(model_id)
+
+
 class DiffusionGemmaDenoiser:
     def __init__(self, model, processor=None, capture_layers: tuple[int, ...] | None = (6, 12, 18, 24, 30),
                  capture_router: bool = True, logit_lens: bool = True, system: str | None = None):
@@ -79,7 +90,7 @@ class DiffusionGemmaDenoiser:
                                                              bnb_4bit_compute_dtype=torch.bfloat16)
         elif quant not in (None, "none", "nvfp4"):
             raise ValueError(f"unknown quant '{quant}' (none | nvfp4 | bnb4)")
-        processor = AutoProcessor.from_pretrained(model_id)
+        processor = load_processor(model_id)
         model = DiffusionGemmaForBlockDiffusion.from_pretrained(model_id, **load)
         return cls(model, processor, **kw)
 
@@ -206,8 +217,12 @@ class DiffusionGemmaDenoiser:
         return [self.processor.decode([int(i)], skip_special_tokens=False) for i in ids]
 
     def trim_after_eos(self, ids: np.ndarray) -> np.ndarray:
+        # Reference `_finalize_canvas` pads after the first id in
+        # generation_config.eos_token_id ([1, 106, 50] for the checkpoint).
         eos = None
-        for c in (self.cfg, self.text_cfg):
+        for c in (getattr(self.model, "generation_config", None), self.cfg, self.text_cfg):
+            if c is None:
+                continue
             try:
                 eos = getattr(c, "eos_token_id", None)
             except AttributeError:  # heterogeneity configs raise instead of returning None

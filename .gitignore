@@ -13,3 +13,5 @@ dist
 *.pyc
 src-tauri/build.log
 **/build.log
+# harness run outputs (keep curated copies under docs/experiments/runs/)
+harness/runs/

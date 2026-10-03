@@ -176,6 +176,11 @@ class ProbeResult:
     n: int
     dim: int
     mean_diff_norm: float
+    null: list[float] | None = None  # the permutation accuracies (for figures)
+
+    def summary(self) -> dict:
+        d = {k: v for k, v in self.__dict__.items() if k != "null"}
+        return d
 
 
 def probe_with_permutation_null(X, y, n_perm: int = 200, seed: int = 0, **kw) -> ProbeResult:
@@ -186,4 +191,5 @@ def probe_with_permutation_null(X, y, n_perm: int = 200, seed: int = 0, **kw) ->
     null = np.array([cv_probe_accuracy(X, rng.permutation(y), seed=seed, **kw) for _ in range(n_perm)])
     p = float((np.sum(null >= acc) + 1) / (n_perm + 1))
     md = X[y > 0].mean(0) - X[y <= 0].mean(0) if (y > 0).any() and (y <= 0).any() else np.zeros(X.shape[1])
-    return ProbeResult(acc, float(null.mean()), float(null.std()), p, len(y), X.shape[1], float(np.linalg.norm(md)))
+    return ProbeResult(acc, float(null.mean()), float(null.std()), p, len(y), X.shape[1], float(np.linalg.norm(md)),
+                       null=[float(v) for v in null])

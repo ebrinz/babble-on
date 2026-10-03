@@ -52,10 +52,11 @@ def main(argv=None) -> int:
     p.add_argument("--quant", default=None, help="none | nvfp4 | bnb4 (diffusion_gemma)")
     _add_sampler_args(p)
 
-    p = sub.add_parser("analyze", help="write report.md/.json for a run")
+    p = sub.add_parser("analyze", help="write report.md/.json (+ SVG figures) for a run and append to the experiment log")
     p.add_argument("run")
     p.add_argument("--pair", nargs=2, default=("in_band", "out_band"))
     p.add_argument("--perm", type=int, default=200)
+    p.add_argument("--log-file", default=None, help="experiment log to append to (default: docs/experiments/LOG.md; BABBLE_EXPERIMENT_LOG=0 disables)")
 
     p = sub.add_parser("fetch-anu", help="bulk-fetch ANU QRNG bytes into a .bbrec (needs ANU_API_KEY)")
     p.add_argument("out")
@@ -134,7 +135,7 @@ def main(argv=None) -> int:
 
     if a.cmd == "analyze":
         from .runner import analyze_run
-        analyze_run(a.run, tuple(a.pair), a.perm, log=log)
+        analyze_run(a.run, tuple(a.pair), a.perm, log=log, log_file=a.log_file)
         return 0
 
     if a.cmd == "fetch-anu":

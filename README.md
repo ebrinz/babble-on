@@ -140,6 +140,14 @@ including the `[model]` extra for the real weights). The app finds
 GPU box's interpreter). The model load for the 26B checkpoint takes minutes
 on first generate; the status line says so.
 
+## Experiment log and reports
+
+`docs/experiments/LOG.md` is the append-only record of every harness run
+(written automatically) and every manual experiment (written by hand; see
+`CLAUDE.md`). Kept reports live in `docs/experiments/runs/<name>/` as
+Markdown with SVG figures that render on light and dark pages. The first
+entry is a tiny-model dry run of the whole pipeline.
+
 ## Visual 3-state smoke (user-run)
 
 Because this README is authored by a headless CI agent, the following end-to-end check must be performed by a human on a machine with a display:
@@ -166,8 +174,10 @@ Also user-run, for the same reason as above:
 | `cargo build --release` | ✓ pass |
 | `cargo test` (src-tauri) | ✓ 33/33 pass (Linux, CPU; includes a sidecar round trip against the harness stub) |
 | `cargo test` (bbrec) | ✓ 11/11 pass |
-| `harness/` pytest | ✓ 50/50 pass (adapter on a tiny DiffusionGemma, parity vs. Transformers `generate`) |
+| `harness/` pytest | ✓ 56/56 pass (adapter on a tiny DiffusionGemma, parity vs. Transformers `generate`, real tokenizer) |
 | `npm run test` (vitest) | ✓ 7/7 pass |
+| `npm run test:ui` (headless Chromium, mocked Tauri bridge) | ✓ 20 checks pass |
+| GitHub Actions (`.github/workflows/ci.yml`) | runs all of the above on Ubuntu |
 | Visual 3-state smoke | **user-run** (see above) |
 | Anomaly bank smoke | **user-run** (see above) |
 
