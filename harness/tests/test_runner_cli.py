@@ -50,6 +50,7 @@ def test_run_and_analyze_with_stub_end_to_end(tmp_path, monkeypatch):
     assert {"in_band", "out_band", "prng"} <= conds
     r0 = rows[0]
     assert len(r0["ids"]) == 16 and r0["provenance"][0]["purpose"] == "initial_canvas"
+    assert r0["id"].endswith("-p0") and len({r["id"] for r in rows}) == len(rows)
     assert (out / "activations" / f"{r0['id']}.npz").exists()
     z = np.load(out / "activations" / f"{r0['id']}.npz")
     assert "pooled_first" in z and "step000_hidden" in z
@@ -75,11 +76,21 @@ def test_run_and_analyze_with_stub_end_to_end(tmp_path, monkeypatch):
     assert logf.read_text().count("## ") == 2  # disabled
 
 
+def test_run_with_too_short_recording_exits_2_and_logs_nothing(tmp_path, monkeypatch):
+    logf = tmp_path / "LOG.md"; logf.write_text("")
+    monkeypatch.setenv("BABBLE_EXPERIMENT_LOG", str(logf))
+    rec = tmp_path / "short.bbrec"
+    make_recording(rec, 512)  # one 512-byte frame < the 832-byte budget for canvas 16 × 6 steps
+    rc = main(["run", str(tmp_path / "r"), "--model", "stub", "--recording", str(rec), "--canvas", "16", "--steps", "6"])
+    assert rc == 2 and logf.read_text() == ""
+
+
 def test_serve_protocol_with_stub(tmp_path):
     req = json.dumps({"steps": 5, "seq_len": 16, "entropy_hex": (b"\x07" * (4 * 16 * 11)).hex(), "preview_every": 2})
     bad = json.dumps({"steps": 5, "seq_len": 16, "entropy_hex": "00"})
+    wrong_len = json.dumps({"steps": 5, "seq_len": 32, "entropy_hex": (b"\x07" * (4 * 32 * 11)).hex()})
     code = "import sys; sys.path.insert(0, %r); from babble_harness.serve import serve; serve('stub', vocab_size=64, canvas_length=16)" % str(Path(__file__).resolve().parents[1])
-    p = subprocess.run([sys.executable, "-c", code], input=req + "\n" + bad + "\n" + "{}\n", capture_output=True, text=True, timeout=120)
+    p = subprocess.run([sys.executable, "-c", code], input=req + "\n" + bad + "\n" + wrong_len + "\n" + "{}\n", capture_output=True, text=True, timeout=120)
     lines = [json.loads(l) for l in p.stdout.splitlines() if l.strip()]
     assert lines[0] == {"type": "ready", "model": "stub"}
     types = [l["type"] for l in lines[1:]]
@@ -88,6 +99,7 @@ def test_serve_protocol_with_stub(tmp_path):
     assert done and done[0]["seed"] == "entropy" and len(done[0]["tokens"]) == 16
     assert any(l["type"] == "step" for l in lines)
     assert any(l["type"] == "error" and "need" in l["message"] for l in lines)
+    assert any(l["type"] == "error" and "canvas is 16" in l["message"] for l in lines)
     assert done[-1]["seed"] == "prng"  # the empty request falls back to PRNG and says so
 
 

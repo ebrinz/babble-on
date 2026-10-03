@@ -102,7 +102,7 @@ pub fn run_generation(
     noise_scale: f64,
     ddim: bool,
     prompt: Option<String>,
-    seed: SeedReply,
+    draw_seed: impl FnOnce(usize) -> SeedReply,
 ) -> Result<(), String> {
     let mut guard = diffusion.engine.lock().unwrap_or_else(|e| e.into_inner());
     if guard.is_none() {
@@ -115,12 +115,14 @@ pub fn run_generation(
     }
     let eng = guard.as_ref().unwrap();
 
+    // Spend the bank only once the model is resident (a load failure above
+    // must not consume anomaly bytes).
+    let need = seq_len * EMBED_DIM * 4;
+    let seed = draw_seed(need);
     let _ = app.emit(
         "diffusion",
         json!({"type": "seeded", "bank_fraction": seed.bank_fraction, "tags": seed.tags}),
     );
-
-    let need = seq_len * EMBED_DIM * 4;
     let entropy = seed.bytes;
     let entropy_opt = if entropy.len() >= need { Some(&entropy[..need]) } else { None };
     let preview_every = (steps / 24).max(1); // dense cadence for a smooth "boil"

@@ -189,6 +189,8 @@ listen<any>("diffusion", (e) => {
       genStatus.textContent = m.stopped_early
         ? `done in ${m.elapsed}s · stopped early at step ${m.i}/${m.total}`
         : `done in ${m.elapsed}s`;
+      // The sidecar says which tape it used; anything but hardware entropy is a loud warning.
+      if (m.seed && m.seed !== "entropy") genStatus.textContent += ` · ⚠ seeded from ${m.seed}, not the stream`;
       genOutput.classList.remove("boiling");
       renderCrystal(m.tokens, false);
       genBtn.disabled = false;

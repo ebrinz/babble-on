@@ -109,7 +109,10 @@ it. **reset** clears the bank along with the stats.
 - **● record** (header) writes every tick's raw bytes with a timestamp to
   `<app-data>/recordings/stream-<ts>.bbrec`; the button shows the running
   size and stops the recording on a second click. Paused ticks are not
-  recorded. The harness replays the coherence walk over the file to label
+  recorded, and a **reset** or a source switch ends the recording (each file
+  is one source's stream under one continuous coherence walk; the header
+  stores the walk state at the moment recording began so the harness replays
+  it exactly). The harness replays the coherence walk over the file to label
   each byte in- or out-of-band (`python -m babble_harness.cli label`).
 - **export seed** (diffusion pane) draws 97 KiB — one DiffusionGemma canvas
   at 48 steps — bank-first exactly as **Generate** would, and writes
@@ -137,7 +140,11 @@ including the `[model]` extra for the real weights). The app finds
 `harness/.venv/bin/python` in a dev checkout; set `BABBLE_SIDECAR_MODEL`
 (`diffusion_gemma` default, `tiny` or `stub` for weight-free development) or
 `BABBLE_SIDECAR_CMD` (a full command line, for a bundled app or a remote
-GPU box's interpreter). The model load for the 26B checkpoint takes minutes
+GPU box's interpreter); a bundled app also looks for a `harness/` folder
+beside the executable and in its app-data directory. A DiffusionGemma
+generation refuses to start until the stream has produced its full seed
+budget, so the text is always a function of hardware bytes, never of a
+fallback PRNG. The model load for the 26B checkpoint takes minutes
 on first generate; the status line says so.
 
 ## Experiment log and reports

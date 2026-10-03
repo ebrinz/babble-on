@@ -75,7 +75,7 @@ def acceptance_raster(rows: list[dict], condition: str, sample_index: int = 0) -
                        commit_order=order)
 
 
-def steps_figure(rows: list[dict]) -> str:
+def steps_figures(rows: list[dict]) -> list[str]:
     by = _by_condition(rows)
     cats = sorted({r["n_steps"] for r in rows})
     series = {}
@@ -84,10 +84,10 @@ def steps_figure(rows: list[dict]) -> str:
         for r in rs:
             counts[r["n_steps"]] += 1
         series[c] = [counts[k] / len(rs) for k in cats]
-    # grouped by condition as lines over the step axis would mislead; use one small columns chart per condition
-    return "\n".join(svg.columns([str(k) for k in cats], v, f"Steps run before stopping — {c}", "share of samples",
-                                 color=svg.color_for(c, i), x_label="steps", y_label="share", h=220)
-                     for i, (c, v) in enumerate(series.items()))
+    # one small columns chart per condition (grouped lines over the step axis would mislead)
+    return [svg.columns([str(k) for k in cats], v, f"Steps run before stopping — {c}", "share of samples",
+                        color=svg.color_for(c, i), x_label="steps", y_label="share", h=220)
+            for i, (c, v) in enumerate(series.items())]
 
 
 def probe_null_figure(null: np.ndarray, observed: float, title: str) -> str:
@@ -104,12 +104,19 @@ def duty_figure(duty: dict[str, float], source: str) -> str:
     return svg.band_meter(duty, "Share of recorded bytes by coherence band", f"source: {source}")
 
 
-def write_run_figures(run_dir: str | Path, rows: list[dict], probe_nulls: dict[str, tuple[np.ndarray, float]] | None = None,
-                      title: str = "babble-on", subtitle: str = "") -> dict[str, str]:
-    """Write every figure into `<run>/report-assets/`; returns name → relative path."""
-    run = Path(run_dir)
-    assets = run / "report-assets"
+def _write(run_dir: str | Path, files: dict[str, str]) -> dict[str, str]:
+    assets = Path(run_dir) / "report-assets"
     assets.mkdir(parents=True, exist_ok=True)
+    out = {}
+    for name, content in files.items():
+        (assets / f"{name}.svg").write_text(content)
+        out[name] = f"report-assets/{name}.svg"
+    return out
+
+
+def write_run_figures(run_dir: str | Path, rows: list[dict], title: str = "babble-on", subtitle: str = "") -> dict[str, str]:
+    """Write the header and the sample figures into `<run>/report-assets/`;
+    returns name → relative path."""
     files = {"header": svg.header(title, subtitle)}
     if rows:
         files["entropy"] = entropy_figure(rows)
@@ -117,14 +124,11 @@ def write_run_figures(run_dir: str | Path, rows: list[dict], probe_nulls: dict[s
         for c in sorted({r["condition"] for r in rows}):
             files[f"commit-{c}"] = commit_heatmap(rows, c)
             files[f"raster-{c}"] = acceptance_raster(rows, c)
-        for i, chunk in enumerate(steps_figure(rows).split("\n</svg>\n")):
-            if chunk.strip():
-                files[f"steps-{i}"] = chunk + "\n</svg>\n"
-    for name, (null, obs) in (probe_nulls or {}).items():
-        files[f"probe-{name}"] = probe_null_figure(null, obs, f"Probe null — {name}")
-    out = {}
-    for name, content in files.items():
-        p = assets / f"{name}.svg"
-        p.write_text(content)
-        out[name] = f"report-assets/{name}.svg"
-    return out
+        for i, fig in enumerate(steps_figures(rows)):
+            files[f"steps-{i}"] = fig
+    return _write(run_dir, files)
+
+
+def write_probe_figures(run_dir: str | Path, probe_nulls: dict[str, tuple[np.ndarray, float]]) -> dict[str, str]:
+    return _write(run_dir, {f"probe-{name}": probe_null_figure(null, obs, f"Probe null — {name}")
+                            for name, (null, obs) in probe_nulls.items()})

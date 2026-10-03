@@ -19,7 +19,7 @@ import numpy as np
 from .analysis import (
     mann_whitney, pooled_activation, probe_with_permutation_null, sample_scalars, text_scalars,
 )
-from .figures import duty_figure, write_run_figures
+from .figures import duty_figure, write_probe_figures, write_run_figures
 from .noise import EntropyExhausted, EntropyTape, budget_bytes
 from .recording import read_recording
 from .sampler import SamplerConfig, sample_canvas
@@ -28,7 +28,8 @@ from .segments import prng_seeds, seeds_from_recording
 
 def build_conditions(cfg: SamplerConfig, recordings: list[str], remote: list[str], seed_dirs: list[str],
                      n_prng: int, max_per_group: int | None, allow_concat: bool, prng_base: int = 0,
-                     log=print) -> dict[str, list[EntropyTape]]:
+                     log=print) -> tuple[dict[str, list[EntropyTape]], list[str]]:
+    """Returns (conditions with at least one seed, the recordings consulted)."""
     need = budget_bytes(cfg.canvas_length, cfg.max_denoising_steps)
     conds: dict[str, list[EntropyTape]] = {"in_band": [], "out_band": [], "prng": [], "remote": []}
     for path in recordings:
@@ -39,7 +40,6 @@ def build_conditions(cfg: SamplerConfig, recordings: list[str], remote: list[str
                 t.meta["recording"] = path
             conds[g].extend(tapes)
         log(f"{path}: {sum(len(f.data) for f in frames)} bytes → in_band {len(got['in_band'])}, out_band {len(got['out_band'])} seeds")
-    conds["_recordings"] = recordings + remote  # consumed by run_experiment for the manifest
     for path in remote:
         header, frames = read_recording(path)
         got = seeds_from_recording(header, frames, need, max_per_group, allow_concat, label_prefix="remote_")
@@ -59,14 +59,15 @@ def build_conditions(cfg: SamplerConfig, recordings: list[str], remote: list[str
             conds.setdefault(key, []).append(t)
     if n_prng:
         conds["prng"] = prng_seeds(n_prng, need, prng_base)
-    return {k: v for k, v in conds.items() if v}
+    return {k: v for k, v in conds.items() if v}, list(recordings) + list(remote)
 
 
 def run_experiment(out_dir: str | Path, denoiser, cfg: SamplerConfig, conditions: dict[str, list[EntropyTape]],
-                   prompts: list[str], model_name: str, save_activations: bool = True, log=print) -> Path:
+                   prompts: list[str], model_name: str, save_activations: bool = True, log=print,
+                   recordings: list[str] | None = None) -> Path:
     out = Path(out_dir)
     (out / "activations").mkdir(parents=True, exist_ok=True)
-    recordings = conditions.pop("_recordings", [])
+    recordings = recordings or []
     manifest = {
         "model": model_name, "sampler": asdict(cfg), "prompts": prompts,
         "budget_bytes": budget_bytes(cfg.canvas_length, cfg.max_denoising_steps),
@@ -75,13 +76,13 @@ def run_experiment(out_dir: str | Path, denoiser, cfg: SamplerConfig, conditions
     }
     n = 0
     with open(out / "samples.jsonl", "w") as f:
-        for prompt in prompts:
+        for pi, prompt in enumerate(prompts):
             if hasattr(denoiser, "set_prompt"):
                 denoiser.set_prompt(prompt)
             for cond, tapes in conditions.items():
                 for ti, tape in enumerate(tapes):
                     tape.pos = 0; tape.log.clear()
-                    sid = f"{cond}-{ti:03d}-{abs(hash(prompt)) % 10_000:04d}"
+                    sid = f"{cond}-{ti:03d}-p{pi}"  # reproducible, collision-free
                     t0 = time.time()
                     try:
                         res = sample_canvas(denoiser, tape, cfg, keep_capture=True)
@@ -137,6 +138,13 @@ def analyze_run(run_dir: str | Path, pair: tuple[str, str] = ("in_band", "out_ba
     model = manifest.get("model", "?")
     when = time.strftime("%Y-%m-%d %H:%M", time.localtime(manifest.get("finished_at", time.time())))
     figs = write_run_figures(run, rows, title="babble-on", subtitle=f"{run.name} · {model} · {when}")
+    activations: dict[str, dict] = {}  # id → loaded npz (read once, used by every probe)
+
+    def load_act(r):
+        if r["id"] not in activations:
+            p = run / "activations" / f"{r['id']}.npz"
+            activations[r["id"]] = dict(np.load(p)) if p.exists() else {}
+        return activations[r["id"]]
     lines = [f"![{run.name}]({figs['header']})", "", f"# Run report — `{run.name}`", "",
              f"model `{model}` · {when} · samples: " + ", ".join(f"{c}={len(v)}" for c, v in by.items()), ""]
     if manifest.get("sampler"):
@@ -154,7 +162,7 @@ def analyze_run(run_dir: str | Path, pair: tuple[str, str] = ("in_band", "out_ba
             (run / "report-assets" / f"duty-{name}.svg").write_text(duty_figure(d, header.source))
             lines += [f"![duty cycle {name}](report-assets/duty-{name}.svg)", "",
                       f"`{path}`: {sum(f.length for f in labelled):,} bytes, {walk.k} trials, final σ {walk.sigma:+.2f} ({walk.band})", ""]
-        except (OSError, ValueError) as e:  # recording moved since the run
+        except (OSError, ValueError, KeyError) as e:  # recording moved or unreadable since the run
             lines += [f"_recording `{path}` not readable for the duty-cycle figure: {e}_", ""]
     if rows:
         lines += ["## Crystallisation", "", f"![entropy]({figs['entropy']})", "", f"![accepted]({figs['accepted']})", ""]
@@ -205,11 +213,9 @@ def analyze_run(run_dir: str | Path, pair: tuple[str, str] = ("in_band", "out_ba
             X, y = [], []
             for c, lab in ((a, 1), (b, 0)):
                 for r in by[c]:
-                    p = run / "activations" / f"{r['id']}.npz"
-                    if p.exists():
-                        z = np.load(p)
-                        if key in z:
-                            X.append(z[key]); y.append(lab)
+                    z = load_act(r)
+                    if key in z:
+                        X.append(z[key]); y.append(lab)
             if len(X) >= 6 and len(set(y)) == 2:
                 pr = probe_with_permutation_null(np.stack(X), np.array(y), n_perm=n_perm)
                 report["probes"][key] = pr.summary()
@@ -220,7 +226,7 @@ def analyze_run(run_dir: str | Path, pair: tuple[str, str] = ("in_band", "out_ba
                 lines.append(f"- {label}: skipped (need ≥ 6 samples with activations across both conditions)")
         report["probe"] = report["probes"].get("pooled_first")
         if probe_nulls:
-            pf = write_run_figures(run, [], probe_nulls, title="babble-on", subtitle=f"{run.name} · {model} · {when}")
+            pf = write_probe_figures(run, probe_nulls)
             lines.append("")
             for name in probe_nulls:
                 lines += [f"![probe null {name}]({pf[f'probe-{name}']})", ""]

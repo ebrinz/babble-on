@@ -98,6 +98,9 @@ assert((await text("#gen-status")).includes("step 3/32"), "step status");
 assert((await page.$$eval("#gen-output .tok", (t) => t.length)) === 3, "tokens rendered as spans");
 await page.evaluate(() => window.__emit("diffusion", { type: "done", i: 12, total: 32, tokens: ["The", " sea", " at", " night"], elapsed: 4.2, stopped_early: true }));
 assert((await text("#gen-status")).includes("stopped early at step 12/32"), "done status reports early stop");
+assert(!(await text("#gen-status")).includes("⚠"), "no warning when the seed came from the stream");
+await page.evaluate(() => window.__emit("diffusion", { type: "done", i: 5, total: 5, tokens: ["x"], elapsed: 1, seed: "prng" }));
+assert((await text("#gen-status")).includes("seeded from prng"), "a non-entropy seed is flagged");
 assert(!(await page.$eval("#gen-btn", (b) => b.disabled)), "generate re-enabled after done");
 
 // export seed

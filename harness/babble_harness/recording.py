@@ -7,11 +7,12 @@ from __future__ import annotations
 
 import json
 import struct
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import BinaryIO, Iterator
 
 MAGIC = b"BBREC001"
+MAX_FRAME = 64 * 1024 * 1024  # a corrupt length field beyond this ends the file
 
 
 @dataclass
@@ -21,6 +22,23 @@ class RecordingHeader:
     trial_interval_ms: int = 100
     trial_min_bits: int = 2048
     notes: str = ""
+    # coherence-walk state when recording started (0 = fresh walk / old file)
+    walk_cum: float = 0.0
+    walk_k: int = 0
+    trial_ones: int = 0
+    trial_bits: int = 0
+    since_last_trial_ns: int = 0
+    extra: dict = field(default_factory=dict)  # header keys this version does not know
+
+    @classmethod
+    def from_json(cls, d: dict) -> "RecordingHeader":
+        known = {f.name for f in fields(cls)} - {"extra"}
+        return cls(**{k: v for k, v in d.items() if k in known}, extra={k: v for k, v in d.items() if k not in known})
+
+    def to_json(self) -> dict:
+        d = {k: v for k, v in asdict(self).items() if k != "extra"}
+        d.update(self.extra)
+        return d
 
 
 @dataclass
@@ -32,7 +50,7 @@ class Frame:
 class RecordingWriter:
     def __init__(self, f: BinaryIO, header: RecordingHeader):
         self.f = f
-        h = json.dumps(asdict(header), separators=(",", ":")).encode()
+        h = json.dumps(header.to_json(), separators=(",", ":")).encode()
         f.write(MAGIC)
         f.write(struct.pack("<I", len(h)))
         f.write(h)
@@ -66,8 +84,17 @@ class RecordingReader:
         self.f = f
         if f.read(8) != MAGIC:
             raise ValueError("not a .bbrec file (bad magic)")
-        (hlen,) = struct.unpack("<I", f.read(4))
-        self.header = RecordingHeader(**json.loads(f.read(hlen)))
+        raw_len = f.read(4)
+        if len(raw_len) < 4:
+            raise ValueError("truncated .bbrec header")
+        (hlen,) = struct.unpack("<I", raw_len)
+        raw = f.read(hlen)
+        if len(raw) < hlen:
+            raise ValueError("truncated .bbrec header")
+        try:
+            self.header = RecordingHeader.from_json(json.loads(raw))
+        except (json.JSONDecodeError, TypeError) as e:
+            raise ValueError(f"bad .bbrec header: {e}") from e
 
     @classmethod
     def open(cls, path: str | Path) -> "RecordingReader":
@@ -79,6 +106,8 @@ class RecordingReader:
             if len(head) < 12:
                 return  # clean end, or a truncated tail: treat as end
             t_ns, n = struct.unpack("<QI", head)
+            if n > MAX_FRAME:
+                return  # corrupt length: treat as the end
             data = self.f.read(n)
             if len(data) < n:
                 return

@@ -10,8 +10,9 @@ of the Plaid engine.
 
 ``entropy_hex`` must hold at least ``budget_bytes(seq_len, steps)`` bytes;
 with none, a PRNG tape is used and the reply says so (``"seed":"prng"``).
-``seq_len`` is honoured only by the stub: a real model's canvas is fixed
-(256) and the ``done`` reply reports the length actually used.
+``seq_len`` must equal the model's canvas length (256 for DiffusionGemma,
+16 for the development stub); any other value is refused with an ``error``
+reply so the host never gets a canvas it did not ask for.
 """
 from __future__ import annotations
 
@@ -42,8 +43,12 @@ def serve(model: str = "diffusion_gemma", **model_kw) -> None:
             emit({"type": "error", "message": f"bad request json: {e}"}); continue
         try:
             steps = int(req.get("steps", 48))
-            # A real model has a fixed canvas; only the stub takes the requested length.
-            seq_len = int(getattr(den, "canvas_length", None) or req.get("seq_len", 256))
+            # The canvas length is the model's; a request that asks for another
+            # length is refused rather than silently resized.
+            canvas = int(getattr(den, "canvas_length", None) or 256)
+            seq_len = int(req.get("seq_len", canvas))
+            if seq_len != canvas:
+                emit({"type": "error", "message": f"seq_len {seq_len} unsupported: this model's canvas is {canvas}"}); continue
             cfg = SamplerConfig(canvas_length=seq_len, vocab_size=getattr(den, "vocab_size", 262_144),
                                 max_denoising_steps=steps, early_stop=bool(req.get("early_stop", True)))
             need = budget_bytes(seq_len, steps)

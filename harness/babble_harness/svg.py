@@ -19,7 +19,12 @@ step order, heatmap cells committing in step order).
 from __future__ import annotations
 
 import math
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape as _escape
+
+
+def escape(text: str) -> str:
+    """XML-escape for both text nodes and attribute values (quotes included)."""
+    return _escape(str(text), {'"': "&quot;"})
 
 INK = "#898781"
 INK_STRONG = "#7f8c88"

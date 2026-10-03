@@ -43,3 +43,28 @@ def test_fixture_matches_rust_expectations():
     assert len(frames) == 3
     assert (frames[0].t_ns, frames[0].data) == (0, b"\xde\xad")
     assert frames[2].t_ns == 200_000_000 and len(frames[2].data) == 256
+
+
+def test_header_tolerates_unknown_fields_and_carries_walk_state():
+    import json, struct
+    h = {"source": "x", "started_at_ms": 1, "trial_interval_ms": 100, "trial_min_bits": 2048,
+         "walk_cum": 12.5, "walk_k": 40, "since_last_trial_ns": 30, "future_field": [1, 2]}
+    raw = json.dumps(h).encode()
+    r = RecordingReader(io.BytesIO(MAGIC + struct.pack("<I", len(raw)) + raw))
+    assert r.header.walk_cum == 12.5 and r.header.walk_k == 40 and r.header.extra == {"future_field": [1, 2]}
+    # round trip keeps the unknown key
+    buf = io.BytesIO(); RecordingWriter(buf, r.header); buf.seek(0)
+    assert RecordingReader(buf).header.extra == {"future_field": [1, 2]}
+
+
+def test_truncated_header_and_corrupt_length():
+    import struct
+    with pytest.raises(ValueError):
+        RecordingReader(io.BytesIO(MAGIC + b"\x00\x00"))
+    with pytest.raises(ValueError):
+        RecordingReader(io.BytesIO(MAGIC + struct.pack("<I", 50) + b"{"))
+    buf = io.BytesIO()
+    w = RecordingWriter(buf, RecordingHeader(source="s", started_at_ms=0))
+    w.frame(1, b"abc")
+    buf.write(struct.pack("<QI", 2, 0xFFFFFFFF) + b"\x09" * 8)
+    assert [f.data for f in RecordingReader(io.BytesIO(buf.getvalue())).frames()] == [b"abc"]

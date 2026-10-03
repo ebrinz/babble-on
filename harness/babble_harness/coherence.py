@@ -10,7 +10,12 @@ deviation is ``sigma = C_k / sqrt(k)`` and the band is classified at
 
 A recording frame is one engine tick's bytes, so replaying "push frame, then
 tick" labels each frame with the band in force right after it arrived — which
-is exactly when the app's anomaly bank decides whether to deposit it.
+is exactly when the app's anomaly bank decides whether to deposit it. The
+header carries the walk state at the moment recording started (cumulative
+sum, trial count, the partial trial, time since the last trial), so the replay
+continues the app's walk rather than starting from zero; files written before
+those fields existed replay from zero, which is only exact if the recording
+started on a fresh session.
 """
 from __future__ import annotations
 
@@ -83,7 +88,14 @@ class Walk:
 
     @classmethod
     def from_header(cls, h: RecordingHeader) -> "Walk":
-        return cls(trial_interval_ns=h.trial_interval_ms * 1_000_000, trial_min_bits=h.trial_min_bits)
+        w = cls(trial_interval_ns=h.trial_interval_ms * 1_000_000, trial_min_bits=h.trial_min_bits,
+                trial_ones=h.trial_ones, trial_bits=h.trial_bits, cum=h.walk_cum, k=h.walk_k,
+                # frame clocks start at 0 when recording starts; the last trial was this long before that
+                trial_last_ns=-int(h.since_last_trial_ns))
+        if w.k > 0:
+            w.sigma = w.cum / math.sqrt(w.k)
+            w.band = band_of(w.sigma)
+        return w
 
     def push(self, data: bytes) -> None:
         self.trial_ones += popcount(data)

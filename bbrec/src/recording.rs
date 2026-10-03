@@ -19,6 +19,9 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 pub const MAGIC: &[u8; 8] = b"BBREC001";
+/// Largest frame a reader will allocate for; an engine tick is a few KiB, so a
+/// length beyond this means a corrupt file.
+pub const MAX_FRAME: usize = 64 * 1024 * 1024;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct RecordingHeader {
@@ -32,6 +35,20 @@ pub struct RecordingHeader {
     /// Free-form: app version, device, notes.
     #[serde(default)]
     pub notes: String,
+    /// Coherence-walk state at the moment recording started, so an offline
+    /// replay continues the app's walk instead of starting from zero (the
+    /// app's bank decisions depend on the carried history). All default to 0
+    /// for files written before these fields existed.
+    #[serde(default)]
+    pub walk_cum: f64,
+    #[serde(default)]
+    pub walk_k: u64,
+    #[serde(default)]
+    pub trial_ones: u64,
+    #[serde(default)]
+    pub trial_bits: u64,
+    #[serde(default)]
+    pub since_last_trial_ns: u64,
 }
 
 pub struct RecordingWriter<W: Write> {
@@ -53,6 +70,7 @@ impl<W: Write> RecordingWriter<W> {
         w.write_all(MAGIC)?;
         w.write_all(&(h.len() as u32).to_le_bytes())?;
         w.write_all(&h)?;
+        w.flush()?; // a recording with no frames yet is already a valid file
         Ok(RecordingWriter { w, frames: 0, bytes: 0 })
     }
 
@@ -109,7 +127,8 @@ impl<R: Read> RecordingReader<R> {
     }
 
     /// Next `(t_ns, bytes)` frame, or `None` at a clean end of file. A
-    /// truncated trailing frame (app killed mid-write) is treated as the end.
+    /// truncated trailing frame (app killed mid-write) is treated as the end,
+    /// as is a frame whose length field is corrupt (over `MAX_FRAME`).
     pub fn next_frame(&mut self) -> io::Result<Option<(u64, Vec<u8>)>> {
         if self.r.fill_buf()?.is_empty() {
             return Ok(None);
@@ -122,7 +141,11 @@ impl<R: Read> RecordingReader<R> {
         if self.r.read_exact(&mut len).is_err() {
             return Ok(None);
         }
-        let mut data = vec![0u8; u32::from_le_bytes(len) as usize];
+        let n = u32::from_le_bytes(len) as usize;
+        if n > MAX_FRAME {
+            return Ok(None);
+        }
+        let mut data = vec![0u8; n];
         if self.r.read_exact(&mut data).is_err() {
             return Ok(None);
         }
@@ -149,7 +172,33 @@ mod tests {
             trial_interval_ms: 100,
             trial_min_bits: 2048,
             notes: String::new(),
+            walk_cum: 12.5,
+            walk_k: 40,
+            trial_ones: 10,
+            trial_bits: 100,
+            since_last_trial_ns: 30_000_000,
         }
+    }
+
+    #[test]
+    fn header_without_walk_fields_reads_as_zero_state() {
+        let h: RecordingHeader = serde_json::from_str(
+            r#"{"source":"x","started_at_ms":1,"trial_interval_ms":100,"trial_min_bits":2048}"#,
+        )
+        .unwrap();
+        assert_eq!((h.walk_cum, h.walk_k, h.since_last_trial_ns), (0.0, 0, 0));
+    }
+
+    #[test]
+    fn corrupt_length_is_end_of_file() {
+        let mut w = RecordingWriter::new(Vec::new(), &header()).unwrap();
+        w.frame(10, &[1, 2, 3]).unwrap();
+        let mut buf = w.finish().unwrap();
+        buf.extend_from_slice(&20u64.to_le_bytes());
+        buf.extend_from_slice(&u32::MAX.to_le_bytes());
+        buf.extend_from_slice(&[9; 8]);
+        let got = RecordingReader::new(&buf[..]).unwrap().frames().unwrap();
+        assert_eq!(got, vec![(10, vec![1, 2, 3])]);
     }
 
     #[test]

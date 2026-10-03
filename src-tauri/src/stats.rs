@@ -85,6 +85,17 @@ impl Band {
     }
 }
 
+/// The coherence walk's carried state, written into a recording's header so
+/// an offline replay continues from here instead of from zero.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WalkState {
+    pub cum: f64,
+    pub k: u64,
+    pub trial_ones: u64,
+    pub trial_bits: u64,
+    pub since_last_trial: Duration,
+}
+
 /// A logged excursion of the cumulative-deviation walk outside the 95% band.
 #[derive(Clone, Copy, Debug)]
 pub struct AnomalyEvent {
@@ -214,6 +225,16 @@ impl Stats {
     /// The most recent `n` bytes of the stream — used to seed the diffusion
     /// sidecar's noise from live hardware entropy. Returns fewer than `n` only
     /// during warmup before that many bytes have arrived.
+    pub fn walk_state(&self) -> WalkState {
+        WalkState {
+            cum: self.cum,
+            k: self.trial_count,
+            trial_ones: self.trial_ones,
+            trial_bits: self.trial_bits,
+            since_last_trial: self.trial_last.elapsed(),
+        }
+    }
+
     pub fn fresh_entropy(&self, n: usize) -> Vec<u8> {
         let start = self.audit_buf.len().saturating_sub(n);
         self.audit_buf.iter().skip(start).copied().collect()

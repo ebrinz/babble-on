@@ -52,6 +52,13 @@ def test_figures_are_well_formed_and_transparent():
     assert 'class="lg">c 1.5<' in figs["collide"]
 
 
+def test_quotes_in_titles_stay_well_formed():
+    s = svg.header('run "a"', 'dev "b"')
+    parse(s)
+    assert "&quot;" in s
+    parse(svg.line_chart({"x": [1, 2]}, 'say "hi"'))
+
+
 def test_condition_colors_are_fixed_and_mid_tone():
     # the validated dual-surface set: never cycle, never recolour on filter
     assert list(svg.CONDITION_COLORS) == ["in_band", "out_band", "prng", "remote"]

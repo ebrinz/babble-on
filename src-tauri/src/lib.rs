@@ -88,26 +88,27 @@ fn generate(
     } else {
         n_samples * seq_len * EMBED_DIM * 4
     };
-    let (etx, erx) = channel::<SeedReply>();
-    let _ = ctrl
-        .0
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .send(ControlMsg::GetSeed(need, etx));
-    let seed = erx.recv_timeout(Duration::from_secs(2)).unwrap_or(SeedReply {
-        bytes: Vec::new(),
-        bank_fraction: 0.0,
-        tags: Vec::new(),
-    });
+    // The seed is drawn (destructively, bank first) only once the engine is
+    // ready, so a model/sidecar failure never spends the anomaly bank.
+    let sender = ctrl.0.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    let draw_seed = move |n: usize| -> SeedReply {
+        let (etx, erx) = channel::<SeedReply>();
+        let _ = sender.send(ControlMsg::GetSeed(n, etx));
+        erx.recv_timeout(Duration::from_secs(2)).unwrap_or(SeedReply {
+            bytes: Vec::new(),
+            bank_fraction: 0.0,
+            tags: Vec::new(),
+        })
+    };
 
     let app2 = app.clone();
     let diff2: Arc<Diffusion> = diff.inner().clone();
     let gemma2: Arc<GemmaSidecar> = gemma.inner().clone();
     std::thread::spawn(move || {
         let result = if use_gemma {
-            run_gemma_generation(&app2, &gemma2, steps, prompt, seed, need)
+            run_gemma_generation(&app2, &gemma2, steps, prompt, need, draw_seed)
         } else {
-            run_generation(&app2, &diff2, steps, seq_len, n_samples, temperature, noise_scale, ddim, prompt, seed)
+            run_generation(&app2, &diff2, steps, seq_len, n_samples, temperature, noise_scale, ddim, prompt, draw_seed)
         };
         if let Err(e) = result {
             let _ = app2.emit("diffusion", serde_json::json!({"type": "error", "message": e}));
@@ -115,6 +116,12 @@ fn generate(
         diff2.release();
     });
     Ok(())
+}
+
+/// Where `harness/` may live at run time (see `sidecar::candidate_roots`).
+fn sidecar_roots(app: &tauri::AppHandle) -> Vec<PathBuf> {
+    let compile_time = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    sidecar::candidate_roots(&compile_time, app.path().app_data_dir().ok())
 }
 
 /// One DiffusionGemma generation through the sidecar, forwarding its
@@ -125,32 +132,41 @@ fn run_gemma_generation(
     gemma: &GemmaSidecar,
     steps: usize,
     prompt: Option<String>,
-    seed: SeedReply,
     need: usize,
+    draw_seed: impl FnOnce(usize) -> SeedReply,
 ) -> Result<(), String> {
     let mut guard = gemma.0.lock().unwrap_or_else(|e| e.into_inner());
     if guard.is_none() {
         let _ = app.emit("diffusion", json!({"type": "loading"}));
-        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
-        let cfg = sidecar::resolve_config(&root)?;
+        let cfg = sidecar::resolve_config(&sidecar_roots(app))?;
         let mut sc = sidecar::Sidecar::spawn(cfg)?;
         sc.wait_ready(Duration::from_secs(1800))?; // the 26B load can take minutes
         *guard = Some(sc);
     }
-    let sc = guard.as_mut().unwrap();
 
+    // Only now spend the bank. A short seed is refused rather than silently
+    // replaced by a PRNG tape: the text must be a function of the bytes.
+    let seed = draw_seed(need);
+    if seed.bytes.len() < need {
+        return Err(format!(
+            "only {} of {need} seed bytes available yet — let the stream run a few seconds, then generate again",
+            seed.bytes.len()
+        ));
+    }
     let _ = app.emit(
         "diffusion",
         json!({"type": "seeded", "bank_fraction": seed.bank_fraction, "tags": seed.tags}),
     );
-    let mut req = json!({"steps": steps, "seq_len": sidecar::CANVAS_LENGTH, "preview_every": 1});
+    let mut req = json!({"steps": steps, "seq_len": sidecar::CANVAS_LENGTH, "preview_every": 1,
+                         "entropy_hex": sidecar::hex(&seed.bytes[..need])});
     if let Some(p) = prompt.as_deref().map(str::trim).filter(|p| !p.is_empty()) {
         req["prompt"] = json!(p);
     }
-    if seed.bytes.len() >= need {
-        req["entropy_hex"] = json!(sidecar::hex(&seed.bytes[..need]));
+    let sc = guard.as_mut().unwrap();
+    if let Err(e) = sc.request(&req) {
+        *guard = None; // transport error: drop the dead process, respawn next time
+        return Err(e);
     }
-    sc.request(&req)?;
     loop {
         match sc.next_event(Duration::from_secs(600)) {
             Ok(sidecar::Event::Message(v)) => {

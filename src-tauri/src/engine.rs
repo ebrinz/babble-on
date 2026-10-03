@@ -54,10 +54,10 @@ impl Engine {
     }
 
     fn start_recording(&mut self, path: PathBuf) -> Result<String, String> {
-        self.stop_recording();
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
         }
+        let ws = self.stats.walk_state();
         let header = RecordingHeader {
             source: self.source.label.clone(),
             started_at_ms: std::time::SystemTime::now()
@@ -67,8 +67,15 @@ impl Engine {
             trial_interval_ms: TRIAL_INTERVAL.as_millis() as u64,
             trial_min_bits: TRIAL_MIN_BITS,
             notes: format!("babble-on {}", env!("CARGO_PKG_VERSION")),
+            walk_cum: ws.cum,
+            walk_k: ws.k,
+            trial_ones: ws.trial_ones,
+            trial_bits: ws.trial_bits,
+            since_last_trial_ns: ws.since_last_trial.as_nanos() as u64,
         };
+        // Open the new file first so a failure leaves the current recording running.
         let writer = RecordingWriter::create(&path, &header).map_err(|e| format!("open {}: {e}", path.display()))?;
+        self.stop_recording();
         let shown = path.to_string_lossy().into_owned();
         self.recorder = Some(Recorder { writer, path, started: Instant::now() });
         Ok(shown)
@@ -87,8 +94,15 @@ impl Engine {
 
     pub fn apply(&mut self, msg: ControlMsg) {
         match msg {
-            ControlMsg::SetSource(kind) => { self.source = Source::spawn(kind); self.status = "connecting".into(); }
+            // A recording is one source's stream with one continuous walk, so a
+            // source switch or a reset (which restarts the walk) ends it.
+            ControlMsg::SetSource(kind) => {
+                self.stop_recording();
+                self.source = Source::spawn(kind);
+                self.status = "connecting".into();
+            }
             ControlMsg::Reset => {
+                self.stop_recording();
                 self.stats.reset();
                 self.bank.clear();
             }
@@ -273,10 +287,39 @@ mod tests {
         let r = bbrec::RecordingReader::open(&path).unwrap();
         assert!(r.header.source.starts_with("simulator"), "source label: {}", r.header.source);
         assert_eq!(r.header.trial_min_bits, TRIAL_MIN_BITS);
+        assert_eq!(r.header.walk_k, 0, "fresh engine: no trials yet");
         let frames = r.frames().unwrap();
         assert_eq!(frames.len(), 2);
         assert_eq!(frames.iter().map(|f| f.1.len() as u64).sum::<u64>(), dto.total_bytes);
         assert!(frames[0].0 < frames[1].0);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn recording_header_carries_walk_state_and_reset_stops_it() {
+        let dir = std::env::temp_dir().join(format!("babble-rec2-{}", std::process::id()));
+        let path = dir.join("s.bbrec");
+        let mut e = Engine::new(SourceKind::Simulate);
+        // Accumulate some trials first so the walk has history.
+        for _ in 0..3 {
+            std::thread::sleep(Duration::from_millis(110));
+            e.tick();
+        }
+        let ws = e.stats.walk_state();
+        assert!(ws.k >= 1);
+        let (tx, rx) = std::sync::mpsc::channel();
+        e.apply(ControlMsg::StartRecording(path.clone(), tx));
+        rx.recv().unwrap().unwrap();
+        let r = bbrec::RecordingReader::open(&path).unwrap();
+        assert_eq!(r.header.walk_k, ws.k);
+        assert!((r.header.walk_cum - ws.cum).abs() < 1e-12);
+        // a bad path leaves the current recording running
+        let (tx2, rx2) = std::sync::mpsc::channel();
+        e.apply(ControlMsg::StartRecording(PathBuf::from("/proc/nonexistent-dir/x.bbrec"), tx2));
+        assert!(rx2.recv().unwrap().is_err());
+        assert!(e.recording().is_some(), "failed start must not stop the running recording");
+        e.apply(ControlMsg::Reset);
+        assert!(e.recording().is_none(), "reset ends the recording");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

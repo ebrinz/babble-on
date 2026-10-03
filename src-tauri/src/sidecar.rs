@@ -4,7 +4,9 @@
 //! Resolution order for the command:
 //!   1. `BABBLE_SIDECAR_CMD` — a full command line, whitespace-split
 //!      (e.g. `/path/to/python -m babble_harness.cli serve --model diffusion_gemma --quant nvfp4`)
-//!   2. the dev checkout: `<repo>/harness/.venv/bin/python -m babble_harness.cli serve
+//!   2. the first candidate root holding `harness/.venv/bin/python`: the dev
+//!      checkout (compile-time path), the ancestors of the running executable,
+//!      and the app-data directory — run as `… -m babble_harness.cli serve
 //!      --model $BABBLE_SIDECAR_MODEL` (default `diffusion_gemma`; `tiny` and
 //!      `stub` are the weight-free models for development)
 //!
@@ -37,28 +39,53 @@ pub struct SidecarConfig {
     pub cwd: Option<PathBuf>,
 }
 
-/// Build the sidecar command from the environment or the dev checkout.
-/// `repo_root` is where `harness/` lives when running from source.
-pub fn resolve_config(repo_root: &std::path::Path) -> Result<SidecarConfig, String> {
+/// Candidate roots that may hold `harness/`: the compile-time checkout, the
+/// running executable's ancestors (a bundle placed beside the repo, or a
+/// `harness` folder shipped next to the binary), and the app-data dir.
+pub fn candidate_roots(compile_time_root: &std::path::Path, app_data: Option<PathBuf>) -> Vec<PathBuf> {
+    let mut v = vec![compile_time_root.to_path_buf()];
+    if let Ok(exe) = std::env::current_exe() {
+        let mut d = exe.parent().map(|p| p.to_path_buf());
+        for _ in 0..6 {
+            match d {
+                Some(p) => {
+                    v.push(p.clone());
+                    d = p.parent().map(|q| q.to_path_buf());
+                }
+                None => break,
+            }
+        }
+    }
+    if let Some(a) = app_data {
+        v.push(a);
+    }
+    v
+}
+
+/// Build the sidecar command from the environment or the first root that
+/// holds a harness venv.
+pub fn resolve_config(roots: &[PathBuf]) -> Result<SidecarConfig, String> {
     if let Ok(cmd) = std::env::var("BABBLE_SIDECAR_CMD") {
         let mut parts = cmd.split_whitespace().map(str::to_string);
         let program = parts.next().ok_or("BABBLE_SIDECAR_CMD is empty")?;
         return Ok(SidecarConfig { program, args: parts.collect(), cwd: None });
     }
-    let harness = repo_root.join("harness");
-    let python = harness.join(".venv").join("bin").join("python");
-    if !python.is_file() {
-        return Err(format!(
-            "DiffusionGemma sidecar not set up: {} missing — create it per harness/README.md, or set BABBLE_SIDECAR_CMD",
-            python.display()
-        ));
-    }
     let model = std::env::var("BABBLE_SIDECAR_MODEL").unwrap_or_else(|_| "diffusion_gemma".into());
-    Ok(SidecarConfig {
-        program: python.to_string_lossy().into_owned(),
-        args: vec!["-m".into(), "babble_harness.cli".into(), "serve".into(), "--model".into(), model],
-        cwd: Some(harness),
-    })
+    for root in roots {
+        let harness = root.join("harness");
+        let python = harness.join(".venv").join("bin").join("python");
+        if python.is_file() {
+            return Ok(SidecarConfig {
+                program: python.to_string_lossy().into_owned(),
+                args: vec!["-m".into(), "babble_harness.cli".into(), "serve".into(), "--model".into(), model],
+                cwd: Some(harness),
+            });
+        }
+    }
+    let looked = roots.iter().map(|r| r.join("harness").display().to_string()).collect::<Vec<_>>().join(", ");
+    Err(format!(
+        "DiffusionGemma sidecar not set up: no harness/.venv/bin/python under {looked} — create it per harness/README.md, or set BABBLE_SIDECAR_CMD"
+    ))
 }
 
 /// One protocol message from the sidecar.
@@ -204,14 +231,25 @@ mod tests {
     fn resolve_config_prefers_env_then_dev_checkout() {
         // env override (set/unset serially; cargo runs tests in threads, so scope it tightly)
         std::env::set_var("BABBLE_SIDECAR_CMD", "/usr/bin/env python3 -m x serve --model tiny");
-        let c = resolve_config(std::path::Path::new("/nonexistent")).unwrap();
+        let c = resolve_config(&[PathBuf::from("/nonexistent")]).unwrap();
         std::env::remove_var("BABBLE_SIDECAR_CMD");
         assert_eq!(c.program, "/usr/bin/env");
         assert_eq!(c.args, vec!["python3", "-m", "x", "serve", "--model", "tiny"]);
         assert!(c.cwd.is_none());
-        // no venv → actionable error
-        let err = resolve_config(std::path::Path::new("/nonexistent")).unwrap_err();
+        // no venv anywhere → actionable error naming every root looked at
+        let err = resolve_config(&[PathBuf::from("/nonexistent"), PathBuf::from("/also-not")]).unwrap_err();
+        assert!(err.contains("/nonexistent/harness") && err.contains("/also-not/harness"), "{err}");
         assert!(err.contains("harness/README.md") && err.contains("BABBLE_SIDECAR_CMD"), "{err}");
+        // the second root wins when the first has no venv
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        if root.join("harness/.venv/bin/python").is_file() {
+            let c = resolve_config(&[PathBuf::from("/nonexistent"), root.clone()]).unwrap();
+            assert_eq!(c.cwd, Some(root.join("harness")));
+        }
+        let roots = candidate_roots(std::path::Path::new("/ct"), Some(PathBuf::from("/data")));
+        assert_eq!(roots.first(), Some(&PathBuf::from("/ct")));
+        assert_eq!(roots.last(), Some(&PathBuf::from("/data")));
+        assert!(roots.len() >= 3, "exe ancestors included: {roots:?}");
     }
 
     /// Full round trip against the harness's stub model. Skipped when the

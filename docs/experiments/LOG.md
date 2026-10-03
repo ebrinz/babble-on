@@ -32,3 +32,17 @@ enough to shape the app.
   a hit, not a finding. What the run proves: labelling, seed cutting (in-band 9606 / out-band 1422 seeds
   available at the tiny budget), the real Transformers adapter path, figures, and the log entry all work end to
   end. Next: the same command on a real `.bbrec` with `--model diffusion_gemma --quant …` on a GPU box.
+
+## 2026-10-03 · method change · recording headers now carry the walk state
+
+- Manual entry (no run). A code review of the branch found that the offline coherence replay
+  (`harness/babble_harness/coherence.py`) started every recording from a zero walk, while the app's
+  walk carries history when **● record** is pressed mid-session — so in-band/out-band labels could
+  differ from what the app's bank actually deposited. Fixed at the source: `.bbrec` headers now store
+  `walk_cum`, `walk_k`, the partial trial and the time since the last trial, and the replay continues
+  from them. Reset and source switches now end a recording, since both restart the walk.
+- Consequence: any `.bbrec` written before this change replays from zero and is only exact if the
+  recording began on a fresh session. None exist yet (the only recordings so far are simulated).
+- Also fixed in the same review: a DiffusionGemma generation now refuses to run on a short seed
+  instead of silently using a PRNG tape (the UI flags any non-entropy seed), the bank is spent only
+  after the engine is ready, and a dead sidecar is respawned.

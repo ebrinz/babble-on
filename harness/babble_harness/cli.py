@@ -108,6 +108,7 @@ def main(argv=None) -> int:
 
     if a.cmd == "run":
         from .models import load_denoiser
+        from .noise import budget_bytes
         from .runner import analyze_run, build_conditions, run_experiment
         cfg = _cfg(a)
         kw = {}
@@ -126,10 +127,11 @@ def main(argv=None) -> int:
             log(f"quantized parameter share: {den.quantized_fraction():.2f}")
         if hasattr(den, "canvas_length"):
             cfg.canvas_length, cfg.vocab_size = den.canvas_length, den.vocab_size
-        conds = build_conditions(cfg, a.recording, a.remote, a.seed_dir, a.prng, a.max_per_group, a.allow_concat, log=log)
+        conds, recs = build_conditions(cfg, a.recording, a.remote, a.seed_dir, a.prng, a.max_per_group, a.allow_concat, log=log)
         if not conds:
-            log("no seeds: pass --recording/--remote/--seed-dir and/or --prng N"); return 2
-        out = run_experiment(a.out, den, cfg, conds, a.prompt or [""], a.model, not a.no_activations, log=log)
+            log("no seeds: pass --recording/--remote/--seed-dir and/or --prng N (a recording shorter than one "
+                f"seed budget of {budget_bytes(cfg.canvas_length, cfg.max_denoising_steps)} bytes yields none)"); return 2
+        out = run_experiment(a.out, den, cfg, conds, a.prompt or [""], a.model, not a.no_activations, log=log, recordings=recs)
         analyze_run(out, log=log)
         return 0
 

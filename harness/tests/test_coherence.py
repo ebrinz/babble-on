@@ -88,3 +88,19 @@ def test_seeds_from_recording_end_to_end():
 def test_prng_seeds():
     s = prng_seeds(3, 16, base_seed=100)
     assert len({t.data for t in s}) == 3 and all(t.label == "prng" for t in s)
+
+
+def test_walk_continues_from_header_state():
+    h = RecordingHeader("dev", 0, walk_cum=20.0, walk_k=100, trial_ones=0, trial_bits=0, since_last_trial_ns=90_000_000)
+    w = Walk.from_header(h)
+    assert w.k == 100 and w.band == "95%" and abs(w.sigma - 2.0) < 1e-9
+    rng = np.random.default_rng(1)
+    # the first frame arrives 20 ms into the recording: 110 ms since the last trial → a trial finalises
+    w.push(rng.bytes(512))
+    t = w.tick(20_000_000)
+    assert t is not None and t.k == 101
+    # and the label of the first frame carries that history (not a fresh in-band walk)
+    frames = [Frame(20_000_000, rng.bytes(512))]
+    labelled, walk = label_frames(frames, h)
+    assert labelled[0].k == 101 and labelled[0].band in ("95%", "in-band")
+    assert abs(walk.cum - 20.0) < 5  # one trial's z cannot move it far
