@@ -46,3 +46,23 @@ enough to shape the app.
 - Also fixed in the same review: a DiffusionGemma generation now refuses to run on a short seed
   instead of silently using a PRNG tape (the UI flags any non-entropy seed), the bank is spent only
   after the engine is ready, and a dead sidecar is respawned.
+
+## 2026-10-06 · spike · 4-bit DiffusionGemma on Apple Silicon (MLX) as a local bench
+
+- Manual entry (throwaway spike, no harness code changed). Question: can the 26B-A4B model run on the
+  M5 / 32 GiB Mac with the entropy contract intact? bf16 (51.7 GB) doesn't fit; NVFP4 and bnb4 need
+  CUDA; GGUF/llama.cpp owns its own RNG and sampler, which would take the draws away from the
+  `EntropyTape` — ruled out. Tried `mlx-community/diffusiongemma-26B-A4B-it-4bit` (mlx-vlm 0.7.6;
+  experts 4-bit, attention/dense MLP/router/embeddings 8-bit; 15 GB on disk) behind the `Denoiser`
+  protocol, driving the unchanged `sample_canvas` loop.
+- Outcome: works. Peak 17.6 GB, ~0.5 s per forward, ~1.1–1.4 s per sampler step, 11–15 steps to
+  early-stop on a 256-token canvas (12–17 s per sample). Forward pass bit-identical on repeat (with
+  and without self-conditioning); same tape ⇒ identical trajectory step by step; different tapes ⇒
+  different canvases. Captures carried over: hidden [5, 256, 2816] at layers 6/12/18/24/30, router
+  counts [30, 128] (top-8), logit-lens agreement. Text is coherent. No QRNG on hand: PCG64 tapes plus
+  one `os.urandom` tape stood in for device bytes.
+- Not yet checked: fidelity to bf16 (needs the CUDA box, or the 8-bit MLX build as an intermediate);
+  logit-lens agreement reads 0 at layers 6–18 on step 1 (plausible on a random canvas, unverified);
+  output opens with an empty `thought` channel marker, which text metrics should strip.
+- Implication: a 4-bit MLX adapter is a viable local bench. Results from it describe the quantised
+  model, so every condition must run on the same build, and any finding should be re-run on bf16.
