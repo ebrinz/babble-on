@@ -1,0 +1,122 @@
+[
+ {
+  "prompt": "passage",
+  "temperature": 0.0,
+  "texts": [
+   "The sun hung low over the horizon, casting long, bruised shadows across the valley floor. A single breeze carried the scent of damp earth and distant pine, whispering through the skeletal leaves of the ancient oaks. In the distance, a river hummed a low, rhythmic melody against smooth stones, a constant pulse that beat beneath the stillness of the approaching twilight. For a fleeting moment, the world seemed to hold its breath, suspended between the golden memory of the day and the cool, velvet uncertainty of the night.",
+   "The golden hour bled through the skeletal branches, casting long, amber shadows across the valley floor. A single oak tree stood sentinel on the ridge, its gnarled roots defiant against the bruised purple of the evening sky. Somewhere deep in the woods, a breeze stirred the dry leaves with a restless sigh, carrying the scent of damp earth and coming rain. For a fleeting moment, the world held its breath, suspended in the quiet between the memory of the day and the inevitable arrival of the night.",
+   "The sun hung low over the horizon, a bruised coin of gold against a canvas of violet. In the valley, the air held its breath, heavy with the scent of damp earth and decaying pine needles. A single wind drifted through the oaks, barely strong enough to brush against the tall grass, sending ripples through the field like a silver tide. For a fleeting moment, the world seemed suspended, caught in the quiet ache between the ending of day and the inevitable arrival of the night."
+  ],
+  "mean_similarity": 0.4060070047552607
+ },
+ {
+  "prompt": "passage",
+  "temperature": 0.7,
+  "texts": [
+   "The golden hour bled slowly across the valley, casting long, tired shadows that the tall grass. There was a profound stillness in the air, the kind that only arrives when the earth is holding its breath before night. In the distance, the river hummed a low, rhythmic thrum, its water whispering over smooth stones and secrets kept since the last thaw. For a fleeting moment, the world felt suspended, caught in a fragile balance of amber light before the first star dared to claim the sky.",
+   "The sun hung low over the horizon, casting long, bruised-purple shadows across the tall grass. In the valley, the mist clung to the earth like a silent shroud, obscuring the roots of the ancient oaks. A single breeze sighed through the skeletal trees, carrying the scent of damp earth and the faint, sweet promise of coming rain. For a fleeting moment, the world held its breath, suspended in the quiet amber space between the ending of the day and the inevitable arrival of the night.",
+   "The golden hour bled through the windowpane, casting long, amber shadows across the worn floorboards. Outside, the wind whispered through the skeletal oak trees, carrying the faint scent of coming rain and damp earth. Inside the room, the frantic pace of the world seemed to dissolve, replaced by the steady, rhythmic ticking of a grandfather clock. For a fleeting moment, time held suspended\u2014a quiet breath held between the memory of what was and the mystery of what was to come."
+  ],
+  "mean_similarity": 0.29087407578212904
+ },
+ {
+  "prompt": "passage",
+  "temperature": 1.0,
+  "texts": [
+   "The golden hour bled through the skeletal trees, casting long, amber shadows across the valley floor. Somewhere in the distance, a lone bell tolled, its rhythmic chime echoing against the heavy silence of the approaching evening. A cool breeze, carrying the scent of damp earth and distant pine, whispered through the tall grass, making it ripple in waves. For a fleeting moment, the world held its breath, suspended between the fading memory of the day and the quiet, velvet embrace of the night.",
+   "The sun hung low over the horizon, casting long, amber shadows that stretched across the valley. A gentle breeze stirred the leaves, carrying the scent of damp earth and wild pine through the quiet air of the fading day. Somewhere, a lone bird circled the cooling sky, its cry sharp and melodic against the vast silence of the approaching night. There was a profound stillness in the air\u2014a fleeting moment where the world seemed to hold its breath before the first stars began to pierce through the velvet dark.",
+   "The sun dipped low beneath the horizon, casting long, bruised shadows across the valley floor. A single breeze carried the scent of damp earth and distant pine, whispering through the skeletal fingers of the oaks. Somewhere in the hollow, a lone bell chimed, a rhythmic pulse that signaled the slow folding of the day. For a fleeting moment, the world held its breath in the amber stillness\u2014a pause between the heat of the afternoon and the inevitable mystery of the night."
+  ],
+  "mean_similarity": 0.3846585032197791
+ },
+ {
+  "prompt": "minimal",
+  "temperature": 0.0,
+  "texts": [
+   "To provide you with the best result, I need a little more information. Would you like:\n\n1.  **A creative writing piece?** (A short story, a poem, or a scene script)\n2.  **A professional document?** (An email, a cover letter, or a report)\n3.  **Informational content?** (An essay, an explanation of a concept, or a summary)\n4.  **Technical writing?** (Code, a tutorial, or a data breakdown)\n\n**Please provide a topic, a prompt, or any specific instructions, and I will get started immediately!**",
+   "To provide you with the best result, I need a little more direction. What would you like me to write?\n\nFor example, I can write:\n*   **A story or poem** (write a 500-word science fiction story)\n*   **An article or essay** (about the benefits of renewable energy)\n*   **An email or letter** (professional or casual)\n*   **Code or technical documentation**\n*   **A script or song lyrics**\n\n**Please give me a topic, a genre, or a prompt, and I will get started!**",
+   "To provide you with the best result, I need a little more direction. What would you like me to write?\n\nFor example:\n*   **A story?** (Give me a genre like sci-fi, fantasy, or mystery.)\n*   **An email or letter?** (What is the context?)\n*   **An article or essay?** (What the topic?)\n*   **Creative writing?** (A poem, a song, or a script?)\n\n**Please provide a prompt or a few deatils, and I will get started!**"
+  ],
+  "mean_similarity": 0.3863799283154122
+ },
+ {
+  "prompt": "minimal",
+  "temperature": 0.7,
+  "texts": [
+   "To provide you with the best result, I need a little more direction. What would you like me to write?\n\n*   **A Story?** (Give me a genre: sci-fi, fantasy, mystery, etc.)\n*   **An Email or Letter?** (Who is it to, and what is the purpose?)\n*   **An Essay or Article?** (What is the topic?)\n*   **A Poem or Song?** (What is the mood or subject?)\n*   **Code?** (What language and function?)\n\n**Please give me a prompt or a few details, and I will get started!**",
+   "To provide you with the best result, I need a little more direction. What would you like me to write?\n\nHere are some examples of what I can do:\n\n*   **A Story:** (Give me a genre: Sci-fi, fantasy, mystery, romance?)\n*   **An Article or Essay:** (Give me a topic or a thesis)\n*   **Creative Writing:** (A poem, a song, or a script)\n*   **Professional Writing:** (An email, a cover letter, a resume)\n*   **Code:** (Tell me the language and the function)\n\n**Just reply with a prompt or a topic, and I will get started!**",
+   "To provide you with the best result, I need a little more direction. What would you like me to write?\n\nFor example, I can write:\n\n*   **A story or poem** (give me a genre or topic).\n*   **A professional document** (an email, cover letter, or business proposal).\n*   **Creative content** (a blog post, script, or lyrics).\n*   **Technical writing** (code, explanations, or summaries).\n\n**Please provide a topic or a prompt!**"
+  ],
+  "mean_similarity": 0.43646683574422696
+ },
+ {
+  "prompt": "minimal",
+  "temperature": 1.0,
+  "texts": [
+   "To provide you with the best result, I need a little more information. What would you like me to write?\n\nFor example, I can write:\n\n*   **A Story:** (Science-fi, fantasy, mystery, romance, etc.)\n*   **An Article or Essay:** (Technology, history, health, or philosophy)\n*   **Creative Writing:** (A poem, a script, or song lyrics)\n*   **Business Content:** (An email, cover letter, or a report)\n*   **Code:** (Python, JavaScript, HTML, etc.)\n\n**Please provide a topic, a prompt, or any specific instructions!**",
+   "To help you best, I need a little more information. What would you like me to write?\n\nFor example, I can write:\n\n*   **A story:** (Science-fiction, fantasy, mystery, a fairy tale?)\n*   **A professional document:** (An email, a cover letter, or a report)\n*   **Creative content:** (A poem, a blog post, or a song lyric)\n*   **Academic help:** (An essay outline or an explanation of a topic)\n*   **Code:** (In various programming languages)\n\n**Just give me a topic or a prompt, and I will get started!**",
+   "To provide you with the best result, I need a little more direction. What would you like me to write?\n\nFor example, I can write:\n\n1.  **A Story:** (What genre? Sci-fi, fantasy, mystery, or romance?)\n2.  **An Essay or Article:** (A topic, a blog post, or an academic piece?)\n3.  **Professional Text:** (An email, a cover letter, or a business description?)\n4.  **Creative Writing:** (A poem, a song, or a script scene?)\n\n**Please give me a topic or a few instructions, and I will get started!**"
+  ],
+  "mean_similarity": 0.49732205778717403
+ },
+ {
+  "prompt": "empty",
+  "temperature": 0.0,
+  "texts": [
+   "To provide the correct answer, I would need to know **which question or problem** you are referring to.\n\nHowever, if you are looking for the common answer to a riddle or a logic puzzle often associated with blank prompts, please provide the text! \n\n**If you intended to attach an image or text and it didn't come through, please paste the question or upload the file again.**",
+   "To help you respond to these phrases, I have categorized them based on the context of the conversation. Here are several ways to answer:\n\n### 1. \"What's up?\"\nThis is usually a casual greeting, similar to \"How are you?\" or \"What is happening?\"\n*   **If you are not doing anything special:**\n    *   \"Not much.\" (The most common response)\n    *   \"Nothing much, just chilling. You?\"\n    *   \"Same old, same old.\"\n*   **If you are actually doing something:**\n    *   \"Just finishing some work.\"\n    *   \"Not much, just about to head out for lunch.\"\n\n### 2. \"How's it going?\"\nThis asks about your current mood or life situation.\n*   **If things are going well:** \"It's going well, thanks!\"\n*   **Standard:** \"Pretty good, you?\"\n*   **If you are busy:** \"A bit hectic, but I'm managing.\"\n*   **If things are just okay:** \"Can't complain.\"\n\n### 3. \"What have you been up?\"\nThis is asked",
+   "To provide an accurate answer, I need to know the specific question or problem you are referring to. \n\nPlease **upload the image** or **paste the text** of the question, and I will be happy to help you solve it!"
+  ],
+  "mean_similarity": 0.13673648908681071
+ },
+ {
+  "prompt": "empty",
+  "temperature": 0.7,
+  "texts": [
+   "To provide the correct answer, I would need to know **which question or problem** you are referring to.\n\nHowever, based on the common context of this prompt, if you are asking for the answer to a specific logic puzzle or a test question, please provide the text or an image.\n\n**If you intended to attach an image but it didn't upload, please try again!**",
+   "To provide the most accurate answer, I need to know **which image or document** you are referring to.\n\nHowever, based on the common context of your request, if you are asking about a specific riddle, puzzle, or visual problem, **please upload the image or paste the text.**\n\nOnce you provide the details, I can help you solve it!",
+   "To provide an accurate answer, I would need to know the specific question or context you are referring to. \n\nHowever, based on the formatting of your prompt, it appears you may be asking for the completion of a sentence or an answer to a multiple-choice question that was omitted.\n\n**Please provide the text or the question you would like me answered, and I will be happy to help!**"
+  ],
+  "mean_similarity": 0.47363171133662935
+ },
+ {
+  "prompt": "empty",
+  "temperature": 1.0,
+  "texts": [
+   "To solve for $x$ in the equation $x^2 - 5x + 6 = 0$, we can use the **factoring method**.\n\n### Step 1: Factor the quadratic\nWe are looking for two numbers that:\n1. **Multiply** to give the constant term ($6$).\n2. **Add** to give the coefficient of the middle term ($-5$).\n\nThe numbers that fit this criteria are **$-2$** and **$-3$** $(-2 \\times -3 = 6$ and $-2 + -3 = -5)$.\n\nSo, we can write the equation as:\n$$(x - 2)(x - 3) = 0$$\n\n### Step 2: Solve for $x$\nAccording to the zero product property, if the product of two factors is zero, at least one of the factors must be zero:\n\n1. $x - 2 = 0 \\implies \\mathbf{x = 2}$\n2. $x - 3 = 0 \\implies \\mathbf{x = 3}$\n\n**Final Answer:**\nThe solutions are **2 and 3**.",
+   "To answer your question accurately, I need to know which specific event or conflict you are referring to. \n\nHowever, based on common historical questions regarding this topic, here are the most likely answers:\n\n### 1. If you are asking about the World War II timeline:\nWorld War II ended in **1945**.\n\n### 2. If you are asking about the World War I timeline:\nWorld War I ended in **1918**.\n\n### 3. If you are asking about the Korean War:\nThe armistice was signed in **1953**.\n\n**Please provide more details if you are asking about a different conflict or event!**",
+   "To provide an accurate answer, I need to know the **specific question or context** you are referring to.\n\nPlease upload the image, provide the text, or describe the problem you are solving, and I will be happy to help you!"
+  ],
+  "mean_similarity": 0.10260283453323225
+ },
+ {
+  "prompt": "raw-empty",
+  "temperature": 0.0,
+  "texts": [
+   "-king (Once a \n    - (- a \n    - (king-slof (Once a \n    -the--of-the-king (Once a \n    -the--of-the-king-slap (Once a \n    - (- (king a \n    -the-king (Once a \n    -the-king-slap (Once a \n    - (Once a \n    -the-king--of \n    -of-the-king-sl\n (Once a player's \n    - (Once a \n    -the-king--of-the-king-slap (Once a \n    - (Once a \n    -the-king--of- \n    Ments the Ments the \n    Ments the Ments- \n    -the-ents the \n    Ments the Ments the \n    Ments the Ments the \n    Ments the Ments the \n    Ments the Ments the \n    Ments the Ments the \n    Ments the Ments- (of, \n    -",
+   "'s life.\" \n- Wait, let's use \" the de-facto life.\" \n- Primes for the UL: \"Equipment (assembly-emphasis) s (assembly-emphasis) life (assembly-emphasis) de-jfacto (assembly-emphasis) de-jure (assembly-emphasis) notes (assembly-emphasis) about (assembly-emphasis) the (assembly-emphasis) U (assembly-emphasis) life (assembly-emphasis).\"\n- Wait, \"the U\" is \"Equipment's.\" \n- Primes for the UL: \"Equipment (assembly-emphasis) de-jfacto (assembly-emphasis) de-jure (assembly-emphasis) notes (assembly-emphasis) about (assembly-emphasis) the U (assembly-emphasis) s (assembly-emphasis) life (assembly-emphasis).\" Wait, \"the U\" is \"Equipment life.\" \n- Primes for the UL: \"Equipment (assembly-emphasis) de-jfacto (assembly-emphasis) de-jure (assembly-emphasis) notes (assembly-emphasis) about (assembly-emphasis) the U (assembly-emphasis) s (assembly-emphasis) life (assembly-emphasis).\"\n",
+   "-20-2 Issue of the de-unfolded-long cases.\n\n### Brief\nThe *brief* is de-briefing... \nthe *briefing* of... \nthe de-unfolded-long cases. \n\n### Summary\nWait... *briefs* the night... \nthe *brief* is updated... \nthe night's pen... \nthe de-unfolded-long cases. \n\n### Conclusion\nThe *brief* is now concluded. \n\n### Dialogue\nThe de-unfolded-long cases \nwere discussed. \nThe errors were found in the wild. \nThe de-unfolded-long cases \nwere corrected in \nthe wild de-ranged. \n\n### Language\nLanguage is de. \nIn the 20th century, \nthe American-English became \nthe facto language of \nthe world-wide de-unfolded-long cases. \n\n### Theory\nThe theory failed. \nThe practice succeeded. \n\n### Wild\nThe wild de-rang-ed. \nThe memory was de-unfolded. \nThe cases were de-unfolded-long. \n\n"
+  ],
+  "mean_similarity": 0.10558449137083618
+ },
+ {
+  "prompt": "raw-empty",
+  "temperature": 0.7,
+  "texts": [
+   " \n* in an extreme area, like sliding \n* down water or adding an auto-ring. (Wait, the prompt says \"The following is a list of the definitions, examples, and etymologies\").\n\nHere we go:\n\n### Definitions\nA definition is a statement of the meaning of a word or phrase, or used as an example \nof an insight or analysis.\n* (The keys are \n* on the table).\n* (The phone is-).\n* (The auto-ring is- is \n* in an extreme\n* area, like sliding water or \n* adding an auto-ring).\n\n### Definitions (continued)\n\n### Examples\nExamples are used to provide-or counter-examples to common \nsense or claims. For instance:\n* (The keys are\n* on the table).\n* (The phone \n* is on the wire).\n* (The auto-ring is \n* in an extreme area).\n\n### Examples (continued)\n\n### Etymology\nEtymology is the study of words, their origins and how\ntheir meanings changed places. For example:\n* \"Auto\" comes from the Greek word \n* *autos*, meaning",
+   "- Oxygen Respiration (Wait, that's not- ERF).\n--the_cup_name-of- ERF (not-a-mentioning-the-cup_name):\n- (Wait).\n- (Wait, I'm thinking of-the_cup_name).\n--the_cup_name: Extreme Energetic Release (Wait, that is energy loss).\n- ERF: Extreme Energetic Release (No, that's not right).\n- ERF: Extreme Energetic Release.\n- (Wait, I'm thinking of the-O-of-ERF).\n- ERF is a date (Wait, ERF is not strictly English, it refers to a plot-of-the-bed).\n- (Wait, let's look up ERF).1- ERF (a date in South Africa).\n- (Medical term): ERF (wait, no).\n- (Wait, let's look up ERF).\n- ERF-Extreme Energetic Release? No, that's common in-language without needing to say it's a {}. (Wait, I'm thinking the-O-of-ERF).",
+   " \"it wasn't aligned by \nthe transportation employees de-stalling...\" (Wait, the *example* is: \"To align the transportation \nemployees' with the laws...\" (Wait, de-stalling is not used, de-layered de-closed...): \"By deposeing the transportation \nemployees'...\"\n\nLaws: (Used in law) \"The depose is of the transportation \nemployees to the de-laws...\"\n\nLaws: (Used in biology) \"The depose of the transportation \nemployees is nature...\"\n\nLaws: (Used in physics) \"The depose of the transportation \nemployees is de-fact the laws...\"\n\nWait, de-confused is- (Let's check the): \"The depose of the transportation \nemployees is the de-laws...\" (Laws: To de-fact the): \"The depose of the transportation \nemployees is the de-laws...\" (Wait, multiple choice): \"The depose is active when \nlaws are organic...\"\n\nWait, I'm looping.\n\n- Check the word `laws`:\n    1. definitions: rules, policies, de jure (in law/government)\n    2."
+  ],
+  "mean_similarity": 0.06893026457789092
+ },
+ {
+  "prompt": "raw-empty",
+  "temperature": 1.0,
+  "texts": [
+   "",
+   "thereis\n- In the city of the-stands, there is closed\n-walking de-facto de-facto de-facto de-facto closed-walking de-\n- In the city of the-stands, there is closed\n-walking de-facto de-local de-facto closed-walking de-facto de-facto\n- In the city of the-stands, where the de-facto-local de-facto de-facto: In the city of the-stands, where the-stands who are ignored: In the city of the-stood, where the-stands who are: In the city of the-stands, where the-stands\n- In the city of the-stood: In the city of the-stands, where the-stands who are ignored\n- Under-stood: in the dust-swept streets\n- Under-stood, where there are the events\n- Under-stood: in the dust-swept streets\n- Under-stood, where the city exists: In the city of the-stood, where the city exists, but the-stands\n- are out of reach\n- Under-stood: in the dust-swept streets",
+   " the de-prioritization \n// is actually it's not the \n// de-prioritization which refers to the \n// de-abbreviations-of-the-side. \n// Wait, it's \"De-Prioritization\" as in \n// the user's ability to see the patient's \n// original data. \n// Oh, wait. It's \"De-Prioritization\" of \n// the de-prioritization-of-the \n// list. \n// No, it's about the collisions. \n// Okay, I got it.\n\n### Details of the de-prioritization logic:\n\n```javascript\nconst handleCollisions = (collisions) => {\n  if (collisions) {\n    // If collisions occur, we de-prioritize \n    // the overlapping elements to prevent issues.\n    forEach(\n      collisions,\n      (collision) => {\n        // logic for de-prioritization\n      }\n    );\n  } else {\n    // If no collisions, we don't need to\n    // de-prioritize anything.\n  }\n};\n}\n```\n\nWait, I"
+  ],
+  "mean_similarity": 0.016129032258064516
+ }
+]
