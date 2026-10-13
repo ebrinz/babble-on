@@ -25,6 +25,17 @@ says otherwise.
   missing is not.
 - When a run is worth keeping, copy its `report.md` and `report-assets/` into
   `docs/experiments/runs/<name>/` and link it from the entry.
+- Manual entries go in the same commit as the experiment's code, results, or
+  revert, and answer four things: **Question**, **Done** (what ran, where the
+  code and raw outputs live, commit hash), **Result** (numbers and
+  observations), **Decision** (shipped, rejected, open, and why). "Experiment"
+  includes spikes, audits, sweeps, smoke tests, model trials, and UI changes
+  built to be judged by eye.
+- One log. Never start a second log or per-experiment result files in place of
+  an entry. Longer write-ups may live under `docs/` or a spike directory, but
+  the entry must summarise and link to them.
+- Rejected experiments stay in the log with the reason, so they are not
+  re-proposed.
 
 ## Reports
 

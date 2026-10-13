@@ -1,0 +1,1608 @@
+{
+ "sample_bytes": 51200,
+ "prompt": "Write a short passage of prose.",
+ "temperature": 0.0,
+ "max_tokens": 256,
+ "samples": [
+  {
+   "index": 0,
+   "condition": "anomaly"
+  },
+  {
+   "index": 1,
+   "condition": "ordinary"
+  },
+  {
+   "index": 2,
+   "condition": "csprng"
+  },
+  {
+   "index": 3,
+   "condition": "biased"
+  },
+  {
+   "index": 4,
+   "condition": "anomaly"
+  },
+  {
+   "index": 5,
+   "condition": "ordinary"
+  },
+  {
+   "index": 6,
+   "condition": "csprng"
+  },
+  {
+   "index": 7,
+   "condition": "biased"
+  },
+  {
+   "index": 8,
+   "condition": "anomaly"
+  },
+  {
+   "index": 9,
+   "condition": "ordinary"
+  },
+  {
+   "index": 10,
+   "condition": "csprng"
+  },
+  {
+   "index": 11,
+   "condition": "biased"
+  },
+  {
+   "index": 12,
+   "condition": "anomaly"
+  },
+  {
+   "index": 13,
+   "condition": "ordinary"
+  },
+  {
+   "index": 14,
+   "condition": "csprng"
+  },
+  {
+   "index": 15,
+   "condition": "biased"
+  },
+  {
+   "index": 16,
+   "condition": "anomaly"
+  },
+  {
+   "index": 17,
+   "condition": "ordinary"
+  },
+  {
+   "index": 18,
+   "condition": "csprng"
+  },
+  {
+   "index": 19,
+   "condition": "biased"
+  },
+  {
+   "index": 20,
+   "condition": "anomaly"
+  },
+  {
+   "index": 21,
+   "condition": "ordinary"
+  },
+  {
+   "index": 22,
+   "condition": "csprng"
+  },
+  {
+   "index": 23,
+   "condition": "biased"
+  },
+  {
+   "index": 24,
+   "condition": "anomaly"
+  },
+  {
+   "index": 25,
+   "condition": "ordinary"
+  },
+  {
+   "index": 26,
+   "condition": "csprng"
+  },
+  {
+   "index": 27,
+   "condition": "biased"
+  },
+  {
+   "index": 28,
+   "condition": "anomaly"
+  },
+  {
+   "index": 29,
+   "condition": "ordinary"
+  },
+  {
+   "index": 30,
+   "condition": "csprng"
+  },
+  {
+   "index": 31,
+   "condition": "biased"
+  },
+  {
+   "index": 32,
+   "condition": "anomaly"
+  },
+  {
+   "index": 33,
+   "condition": "ordinary"
+  },
+  {
+   "index": 34,
+   "condition": "csprng"
+  },
+  {
+   "index": 35,
+   "condition": "biased"
+  },
+  {
+   "index": 36,
+   "condition": "anomaly"
+  },
+  {
+   "index": 37,
+   "condition": "ordinary"
+  },
+  {
+   "index": 38,
+   "condition": "csprng"
+  },
+  {
+   "index": 39,
+   "condition": "biased"
+  },
+  {
+   "index": 40,
+   "condition": "anomaly"
+  },
+  {
+   "index": 41,
+   "condition": "ordinary"
+  },
+  {
+   "index": 42,
+   "condition": "csprng"
+  },
+  {
+   "index": 43,
+   "condition": "biased"
+  },
+  {
+   "index": 44,
+   "condition": "anomaly"
+  },
+  {
+   "index": 45,
+   "condition": "ordinary"
+  },
+  {
+   "index": 46,
+   "condition": "csprng"
+  },
+  {
+   "index": 47,
+   "condition": "biased"
+  },
+  {
+   "index": 48,
+   "condition": "anomaly"
+  },
+  {
+   "index": 49,
+   "condition": "ordinary"
+  },
+  {
+   "index": 50,
+   "condition": "csprng"
+  },
+  {
+   "index": 51,
+   "condition": "biased"
+  },
+  {
+   "index": 52,
+   "condition": "anomaly"
+  },
+  {
+   "index": 53,
+   "condition": "ordinary"
+  },
+  {
+   "index": 54,
+   "condition": "csprng"
+  },
+  {
+   "index": 55,
+   "condition": "biased"
+  },
+  {
+   "index": 56,
+   "condition": "anomaly"
+  },
+  {
+   "index": 57,
+   "condition": "ordinary"
+  },
+  {
+   "index": 58,
+   "condition": "csprng"
+  },
+  {
+   "index": 59,
+   "condition": "biased"
+  },
+  {
+   "index": 60,
+   "condition": "anomaly"
+  },
+  {
+   "index": 61,
+   "condition": "ordinary"
+  },
+  {
+   "index": 62,
+   "condition": "csprng"
+  },
+  {
+   "index": 63,
+   "condition": "biased"
+  },
+  {
+   "index": 64,
+   "condition": "anomaly"
+  },
+  {
+   "index": 65,
+   "condition": "ordinary"
+  },
+  {
+   "index": 66,
+   "condition": "csprng"
+  },
+  {
+   "index": 67,
+   "condition": "biased"
+  },
+  {
+   "index": 68,
+   "condition": "anomaly"
+  },
+  {
+   "index": 69,
+   "condition": "ordinary"
+  },
+  {
+   "index": 70,
+   "condition": "csprng"
+  },
+  {
+   "index": 71,
+   "condition": "biased"
+  },
+  {
+   "index": 72,
+   "condition": "anomaly"
+  },
+  {
+   "index": 73,
+   "condition": "ordinary"
+  },
+  {
+   "index": 74,
+   "condition": "csprng"
+  },
+  {
+   "index": 75,
+   "condition": "biased"
+  },
+  {
+   "index": 76,
+   "condition": "anomaly"
+  },
+  {
+   "index": 77,
+   "condition": "ordinary"
+  },
+  {
+   "index": 78,
+   "condition": "csprng"
+  },
+  {
+   "index": 79,
+   "condition": "biased"
+  },
+  {
+   "index": 80,
+   "condition": "anomaly"
+  },
+  {
+   "index": 81,
+   "condition": "ordinary"
+  },
+  {
+   "index": 82,
+   "condition": "csprng"
+  },
+  {
+   "index": 83,
+   "condition": "biased"
+  },
+  {
+   "index": 84,
+   "condition": "anomaly"
+  },
+  {
+   "index": 85,
+   "condition": "ordinary"
+  },
+  {
+   "index": 86,
+   "condition": "csprng"
+  },
+  {
+   "index": 87,
+   "condition": "biased"
+  },
+  {
+   "index": 88,
+   "condition": "anomaly"
+  },
+  {
+   "index": 89,
+   "condition": "ordinary"
+  },
+  {
+   "index": 90,
+   "condition": "csprng"
+  },
+  {
+   "index": 91,
+   "condition": "biased"
+  },
+  {
+   "index": 92,
+   "condition": "anomaly"
+  },
+  {
+   "index": 93,
+   "condition": "ordinary"
+  },
+  {
+   "index": 94,
+   "condition": "csprng"
+  },
+  {
+   "index": 95,
+   "condition": "biased"
+  },
+  {
+   "index": 96,
+   "condition": "anomaly"
+  },
+  {
+   "index": 97,
+   "condition": "ordinary"
+  },
+  {
+   "index": 98,
+   "condition": "csprng"
+  },
+  {
+   "index": 99,
+   "condition": "biased"
+  },
+  {
+   "index": 100,
+   "condition": "anomaly"
+  },
+  {
+   "index": 101,
+   "condition": "ordinary"
+  },
+  {
+   "index": 102,
+   "condition": "csprng"
+  },
+  {
+   "index": 103,
+   "condition": "biased"
+  },
+  {
+   "index": 104,
+   "condition": "anomaly"
+  },
+  {
+   "index": 105,
+   "condition": "ordinary"
+  },
+  {
+   "index": 106,
+   "condition": "csprng"
+  },
+  {
+   "index": 107,
+   "condition": "biased"
+  },
+  {
+   "index": 108,
+   "condition": "anomaly"
+  },
+  {
+   "index": 109,
+   "condition": "ordinary"
+  },
+  {
+   "index": 110,
+   "condition": "csprng"
+  },
+  {
+   "index": 111,
+   "condition": "biased"
+  },
+  {
+   "index": 112,
+   "condition": "anomaly"
+  },
+  {
+   "index": 113,
+   "condition": "ordinary"
+  },
+  {
+   "index": 114,
+   "condition": "csprng"
+  },
+  {
+   "index": 115,
+   "condition": "biased"
+  },
+  {
+   "index": 116,
+   "condition": "anomaly"
+  },
+  {
+   "index": 117,
+   "condition": "ordinary"
+  },
+  {
+   "index": 118,
+   "condition": "csprng"
+  },
+  {
+   "index": 119,
+   "condition": "biased"
+  },
+  {
+   "index": 120,
+   "condition": "anomaly"
+  },
+  {
+   "index": 121,
+   "condition": "ordinary"
+  },
+  {
+   "index": 122,
+   "condition": "csprng"
+  },
+  {
+   "index": 123,
+   "condition": "biased"
+  },
+  {
+   "index": 124,
+   "condition": "anomaly"
+  },
+  {
+   "index": 125,
+   "condition": "ordinary"
+  },
+  {
+   "index": 126,
+   "condition": "csprng"
+  },
+  {
+   "index": 127,
+   "condition": "biased"
+  },
+  {
+   "index": 128,
+   "condition": "anomaly"
+  },
+  {
+   "index": 129,
+   "condition": "ordinary"
+  },
+  {
+   "index": 130,
+   "condition": "csprng"
+  },
+  {
+   "index": 131,
+   "condition": "biased"
+  },
+  {
+   "index": 132,
+   "condition": "anomaly"
+  },
+  {
+   "index": 133,
+   "condition": "ordinary"
+  },
+  {
+   "index": 134,
+   "condition": "csprng"
+  },
+  {
+   "index": 135,
+   "condition": "biased"
+  },
+  {
+   "index": 136,
+   "condition": "anomaly"
+  },
+  {
+   "index": 137,
+   "condition": "ordinary"
+  },
+  {
+   "index": 138,
+   "condition": "csprng"
+  },
+  {
+   "index": 139,
+   "condition": "biased"
+  },
+  {
+   "index": 140,
+   "condition": "anomaly"
+  },
+  {
+   "index": 141,
+   "condition": "ordinary"
+  },
+  {
+   "index": 142,
+   "condition": "csprng"
+  },
+  {
+   "index": 143,
+   "condition": "biased"
+  },
+  {
+   "index": 144,
+   "condition": "anomaly"
+  },
+  {
+   "index": 145,
+   "condition": "ordinary"
+  },
+  {
+   "index": 146,
+   "condition": "csprng"
+  },
+  {
+   "index": 147,
+   "condition": "biased"
+  },
+  {
+   "index": 148,
+   "condition": "anomaly"
+  },
+  {
+   "index": 149,
+   "condition": "ordinary"
+  },
+  {
+   "index": 150,
+   "condition": "csprng"
+  },
+  {
+   "index": 151,
+   "condition": "biased"
+  },
+  {
+   "index": 152,
+   "condition": "anomaly"
+  },
+  {
+   "index": 153,
+   "condition": "ordinary"
+  },
+  {
+   "index": 154,
+   "condition": "csprng"
+  },
+  {
+   "index": 155,
+   "condition": "biased"
+  },
+  {
+   "index": 156,
+   "condition": "anomaly"
+  },
+  {
+   "index": 157,
+   "condition": "ordinary"
+  },
+  {
+   "index": 158,
+   "condition": "csprng"
+  },
+  {
+   "index": 159,
+   "condition": "biased"
+  },
+  {
+   "index": 160,
+   "condition": "anomaly"
+  },
+  {
+   "index": 161,
+   "condition": "ordinary"
+  },
+  {
+   "index": 162,
+   "condition": "csprng"
+  },
+  {
+   "index": 163,
+   "condition": "biased"
+  },
+  {
+   "index": 164,
+   "condition": "anomaly"
+  },
+  {
+   "index": 165,
+   "condition": "ordinary"
+  },
+  {
+   "index": 166,
+   "condition": "csprng"
+  },
+  {
+   "index": 167,
+   "condition": "biased"
+  },
+  {
+   "index": 168,
+   "condition": "anomaly"
+  },
+  {
+   "index": 169,
+   "condition": "ordinary"
+  },
+  {
+   "index": 170,
+   "condition": "csprng"
+  },
+  {
+   "index": 171,
+   "condition": "biased"
+  },
+  {
+   "index": 172,
+   "condition": "anomaly"
+  },
+  {
+   "index": 173,
+   "condition": "ordinary"
+  },
+  {
+   "index": 174,
+   "condition": "csprng"
+  },
+  {
+   "index": 175,
+   "condition": "biased"
+  },
+  {
+   "index": 176,
+   "condition": "anomaly"
+  },
+  {
+   "index": 177,
+   "condition": "ordinary"
+  },
+  {
+   "index": 178,
+   "condition": "csprng"
+  },
+  {
+   "index": 179,
+   "condition": "biased"
+  },
+  {
+   "index": 180,
+   "condition": "anomaly"
+  },
+  {
+   "index": 181,
+   "condition": "ordinary"
+  },
+  {
+   "index": 182,
+   "condition": "csprng"
+  },
+  {
+   "index": 183,
+   "condition": "biased"
+  },
+  {
+   "index": 184,
+   "condition": "anomaly"
+  },
+  {
+   "index": 185,
+   "condition": "ordinary"
+  },
+  {
+   "index": 186,
+   "condition": "csprng"
+  },
+  {
+   "index": 187,
+   "condition": "biased"
+  },
+  {
+   "index": 188,
+   "condition": "anomaly"
+  },
+  {
+   "index": 189,
+   "condition": "ordinary"
+  },
+  {
+   "index": 190,
+   "condition": "csprng"
+  },
+  {
+   "index": 191,
+   "condition": "biased"
+  },
+  {
+   "index": 192,
+   "condition": "anomaly"
+  },
+  {
+   "index": 193,
+   "condition": "ordinary"
+  },
+  {
+   "index": 194,
+   "condition": "csprng"
+  },
+  {
+   "index": 195,
+   "condition": "biased"
+  },
+  {
+   "index": 196,
+   "condition": "anomaly"
+  },
+  {
+   "index": 197,
+   "condition": "ordinary"
+  },
+  {
+   "index": 198,
+   "condition": "csprng"
+  },
+  {
+   "index": 199,
+   "condition": "biased"
+  },
+  {
+   "index": 200,
+   "condition": "anomaly"
+  },
+  {
+   "index": 201,
+   "condition": "ordinary"
+  },
+  {
+   "index": 202,
+   "condition": "csprng"
+  },
+  {
+   "index": 203,
+   "condition": "biased"
+  },
+  {
+   "index": 204,
+   "condition": "anomaly"
+  },
+  {
+   "index": 205,
+   "condition": "ordinary"
+  },
+  {
+   "index": 206,
+   "condition": "csprng"
+  },
+  {
+   "index": 207,
+   "condition": "biased"
+  },
+  {
+   "index": 208,
+   "condition": "anomaly"
+  },
+  {
+   "index": 209,
+   "condition": "ordinary"
+  },
+  {
+   "index": 210,
+   "condition": "csprng"
+  },
+  {
+   "index": 211,
+   "condition": "biased"
+  },
+  {
+   "index": 212,
+   "condition": "anomaly"
+  },
+  {
+   "index": 213,
+   "condition": "ordinary"
+  },
+  {
+   "index": 214,
+   "condition": "csprng"
+  },
+  {
+   "index": 215,
+   "condition": "biased"
+  },
+  {
+   "index": 216,
+   "condition": "anomaly"
+  },
+  {
+   "index": 217,
+   "condition": "ordinary"
+  },
+  {
+   "index": 218,
+   "condition": "csprng"
+  },
+  {
+   "index": 219,
+   "condition": "biased"
+  },
+  {
+   "index": 220,
+   "condition": "anomaly"
+  },
+  {
+   "index": 221,
+   "condition": "ordinary"
+  },
+  {
+   "index": 222,
+   "condition": "csprng"
+  },
+  {
+   "index": 223,
+   "condition": "biased"
+  },
+  {
+   "index": 224,
+   "condition": "anomaly"
+  },
+  {
+   "index": 225,
+   "condition": "ordinary"
+  },
+  {
+   "index": 226,
+   "condition": "csprng"
+  },
+  {
+   "index": 227,
+   "condition": "biased"
+  },
+  {
+   "index": 228,
+   "condition": "anomaly"
+  },
+  {
+   "index": 229,
+   "condition": "ordinary"
+  },
+  {
+   "index": 230,
+   "condition": "csprng"
+  },
+  {
+   "index": 231,
+   "condition": "biased"
+  },
+  {
+   "index": 232,
+   "condition": "anomaly"
+  },
+  {
+   "index": 233,
+   "condition": "ordinary"
+  },
+  {
+   "index": 234,
+   "condition": "csprng"
+  },
+  {
+   "index": 235,
+   "condition": "biased"
+  },
+  {
+   "index": 236,
+   "condition": "anomaly"
+  },
+  {
+   "index": 237,
+   "condition": "ordinary"
+  },
+  {
+   "index": 238,
+   "condition": "csprng"
+  },
+  {
+   "index": 239,
+   "condition": "biased"
+  },
+  {
+   "index": 240,
+   "condition": "anomaly"
+  },
+  {
+   "index": 241,
+   "condition": "ordinary"
+  },
+  {
+   "index": 242,
+   "condition": "csprng"
+  },
+  {
+   "index": 243,
+   "condition": "biased"
+  },
+  {
+   "index": 244,
+   "condition": "anomaly"
+  },
+  {
+   "index": 245,
+   "condition": "ordinary"
+  },
+  {
+   "index": 246,
+   "condition": "csprng"
+  },
+  {
+   "index": 247,
+   "condition": "biased"
+  },
+  {
+   "index": 248,
+   "condition": "anomaly"
+  },
+  {
+   "index": 249,
+   "condition": "ordinary"
+  },
+  {
+   "index": 250,
+   "condition": "csprng"
+  },
+  {
+   "index": 251,
+   "condition": "biased"
+  },
+  {
+   "index": 252,
+   "condition": "anomaly"
+  },
+  {
+   "index": 253,
+   "condition": "ordinary"
+  },
+  {
+   "index": 254,
+   "condition": "csprng"
+  },
+  {
+   "index": 255,
+   "condition": "biased"
+  },
+  {
+   "index": 256,
+   "condition": "anomaly"
+  },
+  {
+   "index": 257,
+   "condition": "ordinary"
+  },
+  {
+   "index": 258,
+   "condition": "csprng"
+  },
+  {
+   "index": 259,
+   "condition": "biased"
+  },
+  {
+   "index": 260,
+   "condition": "anomaly"
+  },
+  {
+   "index": 261,
+   "condition": "ordinary"
+  },
+  {
+   "index": 262,
+   "condition": "csprng"
+  },
+  {
+   "index": 263,
+   "condition": "biased"
+  },
+  {
+   "index": 264,
+   "condition": "anomaly"
+  },
+  {
+   "index": 265,
+   "condition": "ordinary"
+  },
+  {
+   "index": 266,
+   "condition": "csprng"
+  },
+  {
+   "index": 267,
+   "condition": "biased"
+  },
+  {
+   "index": 268,
+   "condition": "anomaly"
+  },
+  {
+   "index": 269,
+   "condition": "ordinary"
+  },
+  {
+   "index": 270,
+   "condition": "csprng"
+  },
+  {
+   "index": 271,
+   "condition": "biased"
+  },
+  {
+   "index": 272,
+   "condition": "anomaly"
+  },
+  {
+   "index": 273,
+   "condition": "ordinary"
+  },
+  {
+   "index": 274,
+   "condition": "csprng"
+  },
+  {
+   "index": 275,
+   "condition": "biased"
+  },
+  {
+   "index": 276,
+   "condition": "anomaly"
+  },
+  {
+   "index": 277,
+   "condition": "ordinary"
+  },
+  {
+   "index": 278,
+   "condition": "csprng"
+  },
+  {
+   "index": 279,
+   "condition": "biased"
+  },
+  {
+   "index": 280,
+   "condition": "anomaly"
+  },
+  {
+   "index": 281,
+   "condition": "ordinary"
+  },
+  {
+   "index": 282,
+   "condition": "csprng"
+  },
+  {
+   "index": 283,
+   "condition": "biased"
+  },
+  {
+   "index": 284,
+   "condition": "anomaly"
+  },
+  {
+   "index": 285,
+   "condition": "ordinary"
+  },
+  {
+   "index": 286,
+   "condition": "csprng"
+  },
+  {
+   "index": 287,
+   "condition": "biased"
+  },
+  {
+   "index": 288,
+   "condition": "anomaly"
+  },
+  {
+   "index": 289,
+   "condition": "ordinary"
+  },
+  {
+   "index": 290,
+   "condition": "csprng"
+  },
+  {
+   "index": 291,
+   "condition": "biased"
+  },
+  {
+   "index": 292,
+   "condition": "anomaly"
+  },
+  {
+   "index": 293,
+   "condition": "ordinary"
+  },
+  {
+   "index": 294,
+   "condition": "csprng"
+  },
+  {
+   "index": 295,
+   "condition": "biased"
+  },
+  {
+   "index": 296,
+   "condition": "anomaly"
+  },
+  {
+   "index": 297,
+   "condition": "ordinary"
+  },
+  {
+   "index": 298,
+   "condition": "csprng"
+  },
+  {
+   "index": 299,
+   "condition": "biased"
+  },
+  {
+   "index": 300,
+   "condition": "anomaly"
+  },
+  {
+   "index": 301,
+   "condition": "ordinary"
+  },
+  {
+   "index": 302,
+   "condition": "csprng"
+  },
+  {
+   "index": 303,
+   "condition": "biased"
+  },
+  {
+   "index": 304,
+   "condition": "anomaly"
+  },
+  {
+   "index": 305,
+   "condition": "ordinary"
+  },
+  {
+   "index": 306,
+   "condition": "csprng"
+  },
+  {
+   "index": 307,
+   "condition": "biased"
+  },
+  {
+   "index": 308,
+   "condition": "anomaly"
+  },
+  {
+   "index": 309,
+   "condition": "ordinary"
+  },
+  {
+   "index": 310,
+   "condition": "csprng"
+  },
+  {
+   "index": 311,
+   "condition": "biased"
+  },
+  {
+   "index": 312,
+   "condition": "anomaly"
+  },
+  {
+   "index": 313,
+   "condition": "ordinary"
+  },
+  {
+   "index": 314,
+   "condition": "csprng"
+  },
+  {
+   "index": 315,
+   "condition": "biased"
+  },
+  {
+   "index": 316,
+   "condition": "anomaly"
+  },
+  {
+   "index": 317,
+   "condition": "ordinary"
+  },
+  {
+   "index": 318,
+   "condition": "csprng"
+  },
+  {
+   "index": 319,
+   "condition": "biased"
+  },
+  {
+   "index": 320,
+   "condition": "anomaly"
+  },
+  {
+   "index": 321,
+   "condition": "ordinary"
+  },
+  {
+   "index": 322,
+   "condition": "csprng"
+  },
+  {
+   "index": 323,
+   "condition": "biased"
+  },
+  {
+   "index": 324,
+   "condition": "anomaly"
+  },
+  {
+   "index": 325,
+   "condition": "ordinary"
+  },
+  {
+   "index": 326,
+   "condition": "csprng"
+  },
+  {
+   "index": 327,
+   "condition": "biased"
+  },
+  {
+   "index": 328,
+   "condition": "anomaly"
+  },
+  {
+   "index": 329,
+   "condition": "ordinary"
+  },
+  {
+   "index": 330,
+   "condition": "csprng"
+  },
+  {
+   "index": 331,
+   "condition": "biased"
+  },
+  {
+   "index": 332,
+   "condition": "anomaly"
+  },
+  {
+   "index": 333,
+   "condition": "ordinary"
+  },
+  {
+   "index": 334,
+   "condition": "csprng"
+  },
+  {
+   "index": 335,
+   "condition": "biased"
+  },
+  {
+   "index": 336,
+   "condition": "anomaly"
+  },
+  {
+   "index": 337,
+   "condition": "ordinary"
+  },
+  {
+   "index": 338,
+   "condition": "csprng"
+  },
+  {
+   "index": 339,
+   "condition": "biased"
+  },
+  {
+   "index": 340,
+   "condition": "anomaly"
+  },
+  {
+   "index": 341,
+   "condition": "ordinary"
+  },
+  {
+   "index": 342,
+   "condition": "csprng"
+  },
+  {
+   "index": 343,
+   "condition": "biased"
+  },
+  {
+   "index": 344,
+   "condition": "anomaly"
+  },
+  {
+   "index": 345,
+   "condition": "ordinary"
+  },
+  {
+   "index": 346,
+   "condition": "csprng"
+  },
+  {
+   "index": 347,
+   "condition": "biased"
+  },
+  {
+   "index": 348,
+   "condition": "anomaly"
+  },
+  {
+   "index": 349,
+   "condition": "ordinary"
+  },
+  {
+   "index": 350,
+   "condition": "csprng"
+  },
+  {
+   "index": 351,
+   "condition": "biased"
+  },
+  {
+   "index": 352,
+   "condition": "anomaly"
+  },
+  {
+   "index": 353,
+   "condition": "ordinary"
+  },
+  {
+   "index": 354,
+   "condition": "csprng"
+  },
+  {
+   "index": 355,
+   "condition": "biased"
+  },
+  {
+   "index": 356,
+   "condition": "anomaly"
+  },
+  {
+   "index": 357,
+   "condition": "ordinary"
+  },
+  {
+   "index": 358,
+   "condition": "csprng"
+  },
+  {
+   "index": 359,
+   "condition": "biased"
+  },
+  {
+   "index": 360,
+   "condition": "anomaly"
+  },
+  {
+   "index": 361,
+   "condition": "ordinary"
+  },
+  {
+   "index": 362,
+   "condition": "csprng"
+  },
+  {
+   "index": 363,
+   "condition": "biased"
+  },
+  {
+   "index": 364,
+   "condition": "anomaly"
+  },
+  {
+   "index": 365,
+   "condition": "ordinary"
+  },
+  {
+   "index": 366,
+   "condition": "csprng"
+  },
+  {
+   "index": 367,
+   "condition": "biased"
+  },
+  {
+   "index": 368,
+   "condition": "anomaly"
+  },
+  {
+   "index": 369,
+   "condition": "ordinary"
+  },
+  {
+   "index": 370,
+   "condition": "csprng"
+  },
+  {
+   "index": 371,
+   "condition": "biased"
+  },
+  {
+   "index": 372,
+   "condition": "anomaly"
+  },
+  {
+   "index": 373,
+   "condition": "ordinary"
+  },
+  {
+   "index": 374,
+   "condition": "csprng"
+  },
+  {
+   "index": 375,
+   "condition": "biased"
+  },
+  {
+   "index": 376,
+   "condition": "anomaly"
+  },
+  {
+   "index": 377,
+   "condition": "ordinary"
+  },
+  {
+   "index": 378,
+   "condition": "csprng"
+  },
+  {
+   "index": 379,
+   "condition": "biased"
+  },
+  {
+   "index": 380,
+   "condition": "anomaly"
+  },
+  {
+   "index": 381,
+   "condition": "ordinary"
+  },
+  {
+   "index": 382,
+   "condition": "csprng"
+  },
+  {
+   "index": 383,
+   "condition": "biased"
+  },
+  {
+   "index": 384,
+   "condition": "anomaly"
+  },
+  {
+   "index": 385,
+   "condition": "ordinary"
+  },
+  {
+   "index": 386,
+   "condition": "csprng"
+  },
+  {
+   "index": 387,
+   "condition": "biased"
+  },
+  {
+   "index": 388,
+   "condition": "anomaly"
+  },
+  {
+   "index": 389,
+   "condition": "ordinary"
+  },
+  {
+   "index": 390,
+   "condition": "csprng"
+  },
+  {
+   "index": 391,
+   "condition": "biased"
+  },
+  {
+   "index": 392,
+   "condition": "anomaly"
+  },
+  {
+   "index": 393,
+   "condition": "ordinary"
+  },
+  {
+   "index": 394,
+   "condition": "csprng"
+  },
+  {
+   "index": 395,
+   "condition": "biased"
+  },
+  {
+   "index": 396,
+   "condition": "anomaly"
+  },
+  {
+   "index": 397,
+   "condition": "ordinary"
+  },
+  {
+   "index": 398,
+   "condition": "csprng"
+  },
+  {
+   "index": 399,
+   "condition": "biased"
+  }
+ ]
+}
