@@ -171,7 +171,14 @@ app's never-resetting walk only 1 of 30118 trials was out of band.
 That is a property of the statistic, not the device (per-trial z std 1.00):
 σ = C_k/√k is correlated over a span ~k, so a single session gets only
 ~ln(n) independent chances to excurse. With resets, 4.5%
-of trials were anomalous.
+of trials were anomalous. The window of 1000 was chosen after seeing the
+never-reset walk, before any generation, with the metric, test and decision
+rule untouched; it is a convenience value, not a measured session length.
+Known weakness: the ordinary arm is the first ~100 s of capture 1 (pools are
+consumed front to back) while the anomaly arm spans both captures, so the
+two TrueRNG arms are not time-matched. That can add a difference, not hide
+one, so it does not touch this null; a replication should draw ordinary
+bytes from trials adjacent to each excursion.
 
 **Result:** Positive control (biased vs CSPRNG) d = +0.88, p < 0.0001: the
 metric sees gross bias. Null calibration p = 0.47. Primary (anomaly vs

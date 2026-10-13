@@ -34,7 +34,7 @@ Tests: `.venv/bin/python -m pytest tests -q`.
   trials (4.5%), 6.6 MiB.
 - **Generation:** 400 samples, 0 failed, 21.6 s each
   (2.4 h total); 9220–17412 bytes consumed
-  per sample (10–16 denoising steps).
+  per sample (8–16 denoising steps).
 - **Scoring:** 400 of 400 scored, none excluded.
 
 | comparison | metric | n1 | n2 | mean1 | mean2 | d | p |
@@ -58,5 +58,18 @@ The positive control works (biased bytes raise GPT-2 log-perplexity by
 d = +0.88, p < 0.0001), the null calibration is quiet (p = 0.47), and the
 anomaly arm is indistinguishable from ordinary TrueRNG bytes on every metric
 (primary d = −0.01). Anomaly bytes are also indistinguishable from the OS
-CSPRNG. Denoising steps and distinct-word ratio show nothing either; note the
-biased arm does not change the step count at all.
+CSPRNG. Denoising steps and distinct-word ratio show nothing either. The step
+means of the biased and CSPRNG arms tie at 11.63 by coincidence (the
+distributions differ slightly), and because steps are small integers the
+permutation p-values of 1.0 in those rows are a floor effect, not a bug.
+
+**Caveats a replication should fix.** The ordinary arm is not time-matched to
+the anomaly arm: `batch_build.py` consumes each pool front to back, so the
+100 ordinary samples are the first ~100 s of capture 1 while the anomaly
+samples are spread across both captures. A confound of that kind can add a
+difference, not remove one, so it cannot explain this null, but it is the
+first objection a positive result would have met; a replication should draw
+ordinary bytes from trials adjacent to each excursion. The reset window of
+1000 trials was chosen after seeing the never-reset walk (before any
+generation, with the metric, test and decision rule untouched) and is a
+convenience value, not a measured session length.

@@ -24,6 +24,8 @@ def test_score_line_adds_metrics():
 
 def test_score_line_errors_and_empty_text_get_null_nll():
     failed = {"index": 1, "text": "", "consumed": 51200, "error": "replay bytes exhausted"}
-    assert score_line(failed, lambda text: 1.0)["gpt2_nll"] is None
+    out = score_line(failed, lambda text: 1.0)
+    assert out["gpt2_nll"] is None and out["steps"] is None and out["distinct_ratio"] is None
     blank = {"index": 2, "text": "   \n", "consumed": 2052, "error": None}
-    assert score_line(blank, lambda text: 1.0)["gpt2_nll"] is None
+    out = score_line(blank, lambda text: 1.0)
+    assert out["gpt2_nll"] is None and out["steps"] is None and out["distinct_ratio"] is None

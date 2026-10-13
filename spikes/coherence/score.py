@@ -19,11 +19,13 @@ def steps_from_consumed(consumed: int) -> int:
 def score_line(line: dict, nll_fn) -> dict:
     text = line.get("text") or ""
     usable = line.get("error") is None and text.strip() != ""
+    # A failed or empty sample is excluded from every comparison, so all
+    # three metrics are null, not just the primary.
     return {
         **line,
         "gpt2_nll": float(nll_fn(text)) if usable else None,
-        "distinct_ratio": distinct_ratio(text),
-        "steps": steps_from_consumed(line["consumed"]) if line.get("consumed") else None,
+        "distinct_ratio": distinct_ratio(text) if usable else None,
+        "steps": steps_from_consumed(line["consumed"]) if usable and line.get("consumed") else None,
     }
 
 
