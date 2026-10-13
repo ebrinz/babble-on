@@ -1,0 +1,6 @@
+mlx-vlm==0.7.6
+numpy
+pyserial
+torch
+transformers
+pytest
