@@ -73,3 +73,36 @@ ordinary bytes from trials adjacent to each excursion. The reset window of
 1000 trials was chosen after seeing the never-reset walk (before any
 generation, with the metric, test and decision rule untouched) and is a
 convenience value, not a measured session length.
+
+## Label audit 2026-10-13
+
+`label_audit.py` asks whether the trials the walk flags differ from ordinary
+trials on anything the walk does not select on. It re-labels the 2026-10-12
+capture (`capture_all.bin`, 30 118 trials, reset window 1000) and computes
+nine held-out per-trial features: bit autocorrelation at lags 1, 2, 8 and 64,
+byte autocorrelation at lag 1, byte-histogram χ², the NIST runs statistic,
+longest run of ones, and the NIST DFT statistic. Mean bit is reported only as
+a reference, since the walk selects on it. Five comparisons, each a 20 000
+shuffle permutation test per feature with Bonferroni α = 0.01/9:
+
+    .venv/bin/python label_audit.py runs/2026-10-12/capture_all.bin runs/2026-10-12/label_audit.json
+
+| comparison | n | held-out features below α |
+|---|---|---|
+| anomalous vs all ordinary | 1343 vs 28 775 | none (all \|d\| ≤ 0.03, p ≥ 0.24) |
+| anomalous vs adjacent in-band trials | 1343 vs 179 | none (\|d\| ≤ 0.13, p ≥ 0.11) |
+| adjacent vs far ordinary | 179 vs 28 596 | none |
+| biased LCG vs ordinary (positive control) | 1343 vs 28 775 | 8 of 9 (d from 4.7 to 642) |
+| ordinary even vs odd (null) | 14 388 vs 14 387 | none |
+
+Mean bit shows only the selection: anomalous trials average 0.50007 against
+0.49999 for ordinary (d = 0.03; excursions were 749 positive, 594 negative,
+so the signs largely cancel), and the adjacent trials sit at 0.49941 because
+the trial that ends an excursion pushes the other way (d = 0.25, p = 0.001).
+The biased control averages 0.375. The deviation the label marks is about
+7 × 10⁻⁵ per bit, three orders of magnitude below the control, and nothing
+else about those bytes differs from their neighbours.
+
+A compressibility feature was dropped during the run: every 5120-byte trial
+compresses to exactly 5131 bytes, so it has no resolution on random blocks,
+and the zero variance had inflated its effect size.

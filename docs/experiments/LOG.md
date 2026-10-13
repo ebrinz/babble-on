@@ -239,3 +239,38 @@ where the bytes came from, not about the text. No replication capture is
 warranted on this evidence. Side finding for the app: in one continuous
 session the anomaly bank fills rarely, and then for a long stretch, because
 of the walk's log-time correlation; resets are what give it fresh chances.
+
+## 2026-10-13 — Coherence label audit: do the walk's anomalous trials differ on anything held out?
+
+**Question:** The coherence spike found no text-level difference. Before
+spending more generation time: are the bytes the walk flags as anomalous
+distinguishable from ordinary bytes on any property the walk does not select
+on? If not, the label is a selection artefact and no downstream test can see
+anything.
+
+**Done:** `spikes/coherence/label_audit.py` on the existing 2026-10-12
+capture (154 MiB, 30 118 trials, no device needed). Nine held-out per-trial
+features (bit autocorrelation at four lags, byte autocorrelation, byte χ²,
+NIST runs, longest run, NIST DFT), mean bit as the selected-on reference.
+Five comparisons by permutation test, 20 000 shuffles, Bonferroni α = 0.0011:
+anomalous vs ordinary, anomalous vs the 179 in-band trials adjacent to an
+excursion (time-matched control), adjacent vs far, biased-LCG positive
+control, even/odd null. Output `spikes/coherence/runs/2026-10-12/label_audit.json`;
+table in the spike README.
+
+**Result:** No held-out feature differs in any of the three real comparisons
+(anomalous vs ordinary all |d| ≤ 0.03, p ≥ 0.24; vs adjacent |d| ≤ 0.13,
+p ≥ 0.11). The positive control lights 8 of 9 features at d from 4.7 to 642;
+the null split is quiet. The selection itself is tiny: anomalous trials
+average 0.50007 ones per bit vs 0.49999, about 7 × 10⁻⁵, three orders of
+magnitude under the LCG control's 0.125. A compressibility feature was
+dropped mid-run as degenerate (every trial compresses to 5131 bytes).
+
+**Decision:** On this capture the anomaly label marks nothing but the
+expected tail of a fair device: its only measurable property is the mean-bit
+excursion it was selected on, and that excursion is ~10⁻⁴ per bit. The
+text-level null of 2026-10-12 is therefore the expected outcome, not a
+sensitivity failure. Next, with the TrueRNG reattached: a dose-response run
+injecting known bias levels from 10⁻⁴ up to the LCG's level to find the
+detection threshold of text and mechanistic metrics, so "coherence of
+magnitude X would be visible" can be stated instead of searched for.
