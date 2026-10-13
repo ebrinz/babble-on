@@ -274,3 +274,35 @@ sensitivity failure. Next, with the TrueRNG reattached: a dose-response run
 injecting known bias levels from 10⁻⁴ up to the LCG's level to find the
 detection threshold of text and mechanistic metrics, so "coherence of
 magnitude X would be visible" can be stated instead of searched for.
+
+## 2026-10-13 — Coherence dose-response: how much bit bias can the text metric see?
+
+**Question:** The label audit put the walk's anomaly deviation at ~7 × 10⁻⁵
+per bit. What magnitude of deviation would be visible in DiffusionGemma's
+text at all, through the current entry point (bytes → canvas token ids)?
+
+**Done:** `spikes/coherence/dose_build.py` injects P(1) = 0.5 + δ for
+δ ∈ {0, 10⁻⁴, 10⁻³, 10⁻², 3·10⁻², 10⁻¹} into the 2026-10-12 ordinary TrueRNG
+bytes, with the app's biased LCG as the ceiling; 50 samples per arm,
+interleaved; generation, scoring (GPT-2 log-perplexity, steps, distinct-word
+ratio) and permutation test unchanged from the main spike; `dose_analyze.py`
+compares each arm with δ = 0. No device needed. 350/350 generated (34 Metal
+out-of-memory failures regenerated on identical bytes), 1.9 h. Artefacts in
+`spikes/coherence/runs/2026-10-13-dose/` (manifest, scored.jsonl, report.md);
+table in the spike README.
+
+**Result:** No dose moves any metric at α = 0.01. GPT-2 nll d vs δ = 0:
+−0.11, −0.09, −0.38, −0.18, −0.29 for the five doses (p from 0.06 to 0.65),
+not monotonic. The LCG separates at d = +0.66, p = 0.0013, replicating the
+main run. Steps and distinct ratio flat everywhere. Powered for d ≈ 0.57.
+
+**Decision:** Through the current entry point, mean-bit bias is invisible
+to text perplexity up to at least δ = 0.1, three orders of magnitude above
+anything the coherence walk marks. What the metric does see is structure:
+the LCG's 6-bit bytes confine canvas token ids to the bottom quarter of the
+vocabulary with short periods. So "coherence" as a mean-bit excursion
+cannot reach the text through random canvas tokens, whatever its size; if
+the app is to make inference respond to byte statistics, the bytes must
+enter through something the sampler integrates rather than hashes (e.g. the
+confidence threshold, temperature, or unmasking order), or the question must
+move to structure-sensitive features of the stream. Open, product call.

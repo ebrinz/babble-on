@@ -106,3 +106,42 @@ else about those bytes differs from their neighbours.
 A compressibility feature was dropped during the run: every 5120-byte trial
 compresses to exactly 5131 bytes, so it has no resolution on random blocks,
 and the zero variance had inflated its effect size.
+
+## Dose-response 2026-10-13
+
+How large a bit bias does the text metric need before it sees anything?
+`dose_build.py` injects a known bias into the 2026-10-12 ordinary TrueRNG
+bytes, P(bit = 1) = 0.5 + δ for δ ∈ {0, 10⁻⁴, 10⁻³, 10⁻², 3·10⁻², 10⁻¹},
+plus the app's biased LCG as the ceiling, 50 samples per arm, interleaved so
+every arm spans the same stretch of carrier. Generation and scoring are the
+main spike's unchanged; `dose_analyze.py` compares each arm with δ = 0.
+
+    .venv/bin/python dose_build.py runs/2026-10-12/ordinary.bin runs/2026-10-13-dose --per-condition 50
+    .venv/bin/python generate.py runs/2026-10-13-dose/batch.bin runs/2026-10-13-dose/manifest.json runs/2026-10-13-dose/batch.jsonl
+    .venv/bin/python score.py runs/2026-10-13-dose/batch.jsonl runs/2026-10-13-dose/scored.jsonl
+    .venv/bin/python dose_analyze.py runs/2026-10-13-dose/scored.jsonl runs/2026-10-13-dose/manifest.json runs/2026-10-13-dose/report.md
+
+| δ | mean bit | GPT-2 nll d vs δ=0 | p | steps p | distinct p |
+|---|---|---|---|---|---|
+| 10⁻⁴ | 0.5001 | −0.11 | 0.58 | 0.22 | 0.65 |
+| 10⁻³ | 0.501 | −0.09 | 0.65 | 0.47 | 0.65 |
+| 10⁻² | 0.510 | −0.38 | 0.06 | 0.37 | 0.14 |
+| 3·10⁻² | 0.530 | −0.18 | 0.39 | 0.61 | 0.53 |
+| 10⁻¹ | 0.600 | −0.29 | 0.15 | 0.95 | 0.83 |
+| LCG | 0.375 | +0.66 | 0.0013 | 0.81 | 0.93 |
+
+No dose up to δ = 0.1 (60% ones) moves any metric at α = 0.01, and the
+effect sizes are not monotonic in δ. The LCG separates at d = +0.66, as in
+the main run. The difference is structure, not mean: the LCG masks every
+byte to 6 bits, so all canvas token ids fall in the bottom quarter of the
+vocabulary and repeat with the generator's short low-bit periods, whereas
+a biased carrier still yields token ids spread over the whole vocabulary,
+merely skewed. The confidence sampler overwrites either canvas in 8–16
+steps, and only the LCG's structure survives to the text.
+
+**What a replication must know.** 34 samples (indices 114–160, spread
+evenly over the arms) failed on the first pass with a Metal out-of-memory
+error while another process held GPU memory; since each sample is a pure
+function of its reservoir, they were regenerated on the same bytes and all
+350 are present. GPT-2 log-perplexity on 256-token prose at n = 50 per arm
+is powered for d ≈ 0.57; a dose effect smaller than that is not excluded.
