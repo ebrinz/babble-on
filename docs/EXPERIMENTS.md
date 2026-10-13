@@ -144,3 +144,45 @@ generator directly. The canvas carries a thinking-channel prefix to strip.
 authorship of the *subject* is not achievable with the instruct checkpoint by
 prompting; it is a product call whether wording-only authorship (with far
 better prose) is worth a 15 GB model, a Python sidecar, and a 32 GB floor.
+
+---
+
+## 2026-10-12 — Coherence spike: do anomaly-bank bytes measurably change DiffusionGemma's text?
+
+**Question:** Is text generated from out-of-band TrueRNG bytes measurably
+different from text generated from in-band bytes, and is the measurement
+sensitive enough that a null result means something?
+
+**Done:** Pre-registered A/B (spec
+`docs/superpowers/specs/2026-10-12-coherence-spike-design.md`, plan
+`docs/superpowers/plans/2026-10-12-coherence-spike.md`). 147 MiB
+TrueRNG capture in two files (first cut at 51 MiB by an unplug) split offline
+by a port of the app's coherence walk; 100 samples per condition (anomaly,
+ordinary, CSPRNG, biased LCG), round-robin, DiffusionGemma at temperature 0
+with the "short passage of prose" prompt, every random draw from the sample's
+own reservoir. Primary metric GPT-2 log-perplexity; secondary denoising steps
+and distinct-word ratio; permutation test, 20 000 shuffles. Code in
+`spikes/coherence/`, artefacts in `spikes/coherence/runs/2026-10-12/`.
+400 of 400 samples generated and scored, 0 excluded, 2.4 h.
+
+Two deviations from the spec, both ledgered: the two-part capture, and the
+walk is restarted every 1000 trials (~100 s of app time) because with the
+app's never-resetting walk only 1 of 30118 trials was out of band.
+That is a property of the statistic, not the device (per-trial z std 1.00):
+σ = C_k/√k is correlated over a span ~k, so a single session gets only
+~ln(n) independent chances to excurse. With resets, 4.5%
+of trials were anomalous.
+
+**Result:** Positive control (biased vs CSPRNG) d = +0.88, p < 0.0001: the
+metric sees gross bias. Null calibration p = 0.47. Primary (anomaly vs
+ordinary) d = −0.01, p = 0.92; anomaly vs CSPRNG d = +0.09, p = 0.51.
+Secondary metrics all null (steps p = 0.38, distinct ratio p = 0.65).
+Verdict line: "NO DETECTABLE DIFFERENCE: anomaly vs ordinary gpt2_nll p=0.920".
+
+**Decision:** No detectable effect of anomaly-bank entropy on the generated
+text, with a working positive control and a quiet null, at n = 100 per arm
+(powered for d ≈ 0.5). The app's provenance stamp remains a statement about
+where the bytes came from, not about the text. No replication capture is
+warranted on this evidence. Side finding for the app: in one continuous
+session the anomaly bank fills rarely, and then for a long stretch, because
+of the walk's log-time correlation; resets are what give it fresh chances.
