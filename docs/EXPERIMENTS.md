@@ -112,3 +112,35 @@ squeezes entropy into wording. No base DiffusionGemma checkpoint is published.
 Untested idea: a prompt that explicitly hands over the subject choice. The
 Tauri swap (Python sidecar, entropy plumbing, streaming previews, bundling)
 is not started.
+
+---
+
+## 2026-10-12 — DiffusionGemma: hand-over prompts and streaming preview
+
+**Question:** (1) Can a prompt that delegates the subject choice let entropy
+pick the topic while keeping prose? (2) Does mlx-vlm expose the canvas after
+every denoising step, live, so the app's crystallising-text view survives a
+swap?
+
+**Done:** `sweep.py --prompts handover,handover-wild` ("Pick any subject you
+like…" and "Choose a surprising subject at random…") × T {0, 1.0} × 3 runs;
+texts in `spikes/diffusiongemma/handover_results.json`. `preview.py` drives
+`stream_diffusion_generate` directly with unmasking drafts on and records the
+event timeline. The TrueRNG dropped off USB mid-sweep; it came back at the
+same path and the affected cells were rerun.
+
+**Result:** (1) No. "Pick any subject" chose bioluminescence in 6 of 6 runs;
+"choose at random" chose the wombat in 8 of 8. The random-subject request is
+itself a fixed point of the instruct model; entropy still only varies wording
+(similarity 0.3–0.4). (2) Yes. 13 live draft events over a 36 s generation,
+~2.5 s apart, each with the full canvas and `[Mask]` for unrevealed positions.
+The reveal is confidence-ordered and mostly left-to-right, so the preview is a
+fill-in-the-blanks animation rather than Plaid's boil; a sidecar could decode
+the raw canvas to show noise in the gaps. The public `generate` and
+`stream_generate` batch drafts until the end, so a sidecar must use the
+generator directly. The canvas carries a thinking-channel prefix to strip.
+
+**Decision:** Open, with the technical questions now all answered. Entropy
+authorship of the *subject* is not achievable with the instruct checkpoint by
+prompting; it is a product call whether wording-only authorship (with far
+better prose) is worth a 15 GB model, a Python sidecar, and a 32 GB floor.

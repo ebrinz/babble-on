@@ -23,6 +23,9 @@ PROMPTS = {
     "minimal": ("Write.", True),
     "empty": ("", True),
     "raw-empty": ("", False),  # no chat template at all
+    # hand-over prompts: can the prompt delegate the subject choice to entropy?
+    "handover": ("Pick any subject you like and write a short passage about it.", True),
+    "handover-wild": ("Choose a surprising subject at random and write a short passage of prose about it.", True),
 }
 
 
@@ -36,6 +39,7 @@ def main():
     p.add_argument("--runs", type=int, default=3)
     p.add_argument("--max-tokens", type=int, default=256)
     p.add_argument("--out", default="sweep_results.json")
+    p.add_argument("--prompts", default=",".join(PROMPTS), help="comma-separated subset of prompt names")
     args = p.parse_args()
 
     model, processor = load(MODEL)
@@ -44,7 +48,8 @@ def main():
     temps = [float(t) for t in args.temperatures.split(",")]
 
     results = []
-    for (name, (text, templated)), temp in itertools.product(PROMPTS.items(), temps):
+    selected = [(n, PROMPTS[n]) for n in args.prompts.split(",")]
+    for (name, (text, templated)), temp in itertools.product(selected, temps):
         prompt = apply_chat_template(processor, config, text, num_images=0) if templated else text
         texts = []
         for i in range(args.runs):

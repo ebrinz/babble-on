@@ -78,3 +78,42 @@ choose the subject would need either a base (non-instruct) checkpoint, which
 Google has not published for DiffusionGemma, or an authored prompt that
 explicitly hands the choice over (e.g. "Pick any subject and write…"), which is
 untested here.
+
+## Step 2b: hand-over prompts (2026-10-12)
+
+Can a prompt delegate the subject choice to entropy? Two prompts via
+`sweep.py --prompts handover,handover-wild --temperatures 0,1.0`; texts in
+`handover_results.json`.
+
+| prompt | T=0 | T=1.0 | subject chosen |
+|---|---|---|---|
+| "Pick any subject you like and write a short passage about it." | 0.38 | 0.34 | bioluminescence, 6 of 6 runs |
+| "Choose a surprising subject at random and write a short passage of prose about it." | 0.40 | 0.30 | the wombat, 8 of 8 runs (one run: its square droppings) |
+
+Asking the model to choose at random just moves the fixed point: "random
+subject" is itself a mode of the instruct model. Entropy still only varies the
+wording. The TrueRNG dropped off USB ("Device not configured") during the
+first wild cell; it re-enumerated at the same path and the cell was rerun.
+
+## Step 3: streaming preview (2026-10-12)
+
+Can a sidecar get the canvas after every denoising step, live, for the app's
+crystallising-text view? `preview.py` drives the generic
+`stream_diffusion_generate` generator directly with
+`diffusion_show_unmasking=True`. (The public `generate`/`stream_generate`
+collect the per-step drafts and release them only after generation ends, so
+they are no use for a live preview.)
+
+- Yes: 13 draft events over a 36 s generation, first at 2.4 s, then one every
+  ~2.5 s (max gap 5.7 s), each carrying the full canvas text with unrevealed
+  positions rendered as `[Mask]`.
+- The reveal is confidence-ordered and mostly left-to-right: accepted tokens
+  are frozen and only the gaps change. This is a fill-in-the-blanks animation,
+  not Plaid's every-token-boils-every-step effect. A sidecar could instead
+  decode the raw canvas (`draft_canvas`) to show the noise tokens in the gaps.
+- The canvas carries a `<|channel>thought\n<channel|>` prefix (Gemma's
+  thinking channel) that must be stripped before display; the public
+  `generate` does this via `skip_special_token_ids`.
+- Only 13 of the nominal 48 steps ran: the confidence-threshold sampler stops
+  once every position is accepted. That matches the 11–14 KB entropy budget
+  measured in step 1.
