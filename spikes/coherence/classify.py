@@ -18,10 +18,12 @@ def main():
     p.add_argument("capture")
     p.add_argument("outdir")
     p.add_argument("--min-bytes", type=int, default=100 * 51_200)
+    p.add_argument("--reset-every", type=int, default=None,
+                   help="restart the walk after this many trials (fresh app session)")
     args = p.parse_args()
 
     data = Path(args.capture).read_bytes()
-    anomaly, ordinary, sigmas = classify(data)
+    anomaly, ordinary, sigmas = classify(data, reset_every=args.reset_every)
     out = Path(args.outdir)
     out.mkdir(parents=True, exist_ok=True)
     (out / "anomaly.bin").write_bytes(anomaly)
@@ -31,6 +33,7 @@ def main():
     summary = {
         "capture_bytes": len(data),
         "trial_bytes": TRIAL_BYTES,
+        "reset_every": args.reset_every,
         "trials": len(sigmas),
         "anomalous_trials": n_anom,
         "anomalous_fraction": n_anom / len(sigmas) if sigmas else 0.0,

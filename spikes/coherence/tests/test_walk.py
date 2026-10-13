@@ -44,3 +44,15 @@ def test_classify_keeps_byte_order_within_each_pool():
 def test_classify_honours_custom_trial_size():
     _, _, sigmas = classify(bytes(1000), trial_bytes=100)
     assert len(sigmas) == 10
+
+
+def test_classify_reset_every_restarts_the_walk():
+    # Trial 1 all-ones pushes sigma far out; a balanced trial 2 keeps a never-
+    # reset walk out of band (sigma halves by sqrt(2), still >> Z95). With a
+    # reset after every trial, trial 2 starts fresh at sigma 0 and is ordinary.
+    ones = bytes([0xFF]) * TRIAL_BYTES
+    balanced = bytes([0b10101010]) * TRIAL_BYTES
+    anomaly, ordinary, sigmas = classify(ones + balanced)
+    assert anomaly == ones + balanced and sigmas[1] >= Z95
+    anomaly, ordinary, sigmas = classify(ones + balanced, reset_every=1)
+    assert anomaly == ones and ordinary == balanced and sigmas == [sigmas[0], 0.0]
