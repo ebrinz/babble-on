@@ -357,3 +357,27 @@ gross structure barely does. Giving entropy a real vote needs a sampler
 change that departs from the reference, e.g. committing positions in a
 tape-chosen order or at a looser entropy bound so draws land where the model
 is uncertain. That is a design decision about what the app claims, open.
+
+## 2026-10-14 — Prompt composition: TrueRNG bytes write DiffusionGemma's brief
+
+**Question:** Every dose run showed DiffusionGemma's content is fixed by the
+prompt and the bytes only touch wording. Can the bytes author the content
+by composing the prompt instead?
+
+**Done:** `spikes/prompt_compose/compose.py`: 16 TrueRNG bytes choose a
+subject, setting, mood and form from four 32-entry lists ordered from
+ordinary to strange (harness bytes → uniform → index contract); the passage
+is generated through the harness sampler on the MLX backend, tape from the
+following bytes. 12 passages from the 2026-10-12 capture. Texts in
+`spikes/prompt_compose/runs/2026-10-14.jsonl`; write-up in the spike README.
+
+**Result:** 12/12 passages follow every drawn slot, with good prose. Mean
+pairwise word overlap 0.08, against 0.3–0.5 for fixed-prompt runs. 67 s per
+passage (22.5 steps on average vs ~14 for a plain prompt).
+
+**Decision:** Works; this is the content lever for the DiffusionGemma
+engine. The device chooses the subject honestly and the app can show the
+drawn brief. The coherence coupling (ordered lists, so a high-skewed stream
+drifts toward the strange) is designed, not a finding. Open: whether the app
+adopts it, list design, and whether Cola-DLM (smoke test next) makes it
+unnecessary.
