@@ -381,3 +381,31 @@ drawn brief. The coherence coupling (ordered lists, so a high-skewed stream
 drifts toward the strange) is designed, not a finding. Open: whether the app
 adopts it, list design, and whether Cola-DLM (smoke test next) makes it
 unnecessary.
+
+## 2026-10-14 — Cola-DLM smoke test on Apple Silicon
+
+**Question:** Does Cola-DLM (continuous latent diffusion, ~2B, Apache-2.0)
+run on MPS at a usable speed, and does its latent noise change the content
+of the text, which DiffusionGemma's noise never did?
+
+**Done:** `spikes/cola_dlm/smoke.py` with the vendor code at 7d1daee
+(gitignored) and the 9.3 GB weights. Every block's Gaussian noise drawn from
+TrueRNG bytes (2026-10-12 capture) by inverse normal CDF; greedy decoding.
+Determinism check, then 6 samples × 2 open prompts at 128 tokens. A
+precision check compared the MPS workaround with CUDA-style autocast on the
+same bytes. Samples in `spikes/cola_dlm/runs/smoke.jsonl`; write-up in the
+spike README.
+
+**Result:** Runs on MPS after two spike-local dtype fixes (the code assumes
+CUDA autocast); the CUDA-style autocast run gives identical text, so the fix
+is neutral. 35–44 s per 128 tokens, 8 KB of bytes. Same bytes → same text.
+The noise picks the subject: six unrelated stories per prompt, word overlap
+0.10 (DiffusionGemma fixed prompt 0.3–0.5). Prose is poor, base-model web
+text, often ungrammatical, closer to Plaid than to DiffusionGemma.
+
+**Decision:** Cola-DLM has the Plaid property (entropy authors content)
+without better prose, so it does not replace prompt composition on
+DiffusionGemma for the app. Not pursued further unless an instruction-tuned
+or larger checkpoint appears. Possible later use: entropy-authored seed text
+from Cola-DLM as raw material for DiffusionGemma, which would keep content
+authorship in the noise rather than in designed word lists.

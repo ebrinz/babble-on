@@ -1,0 +1,9 @@
+vendor/
+.venv/
+hf_models/
+runs/**/*.log
+fetch.err
+dl2.log
+download.log
+expected_sizes.txt
+fetch.log
