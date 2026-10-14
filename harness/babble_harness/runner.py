@@ -74,6 +74,8 @@ def run_experiment(out_dir: str | Path, denoiser, cfg: SamplerConfig, conditions
         "conditions": {k: len(v) for k, v in conditions.items()}, "recordings": list(recordings),
         "started_at": time.time(), "samples": 0, "skipped": 0,
     }
+    if hasattr(denoiser, "describe"):
+        manifest["backend"] = denoiser.describe()  # which build produced this run
     n = 0
     with open(out / "samples.jsonl", "w") as f:
         for pi, prompt in enumerate(prompts):
@@ -132,7 +134,8 @@ def analyze_run(run_dir: str | Path, pair: tuple[str, str] = ("in_band", "out_ba
     conds = sorted({r["condition"] for r in rows})
     keys = sorted({k for r in rows for k in r["scalars"]})
     by = {c: [r for r in rows if r["condition"] == c] for c in conds}
-    report: dict = {"run": str(run), "model": manifest.get("model"), "n": {c: len(v) for c, v in by.items()},
+    report: dict = {"run": str(run), "model": manifest.get("model"), "backend": manifest.get("backend"),
+                    "n": {c: len(v) for c, v in by.items()},
                     "scalars": {}, "tests": {}, "probe": None}
     probe_nulls: dict = {}
     model = manifest.get("model", "?")
@@ -147,6 +150,8 @@ def analyze_run(run_dir: str | Path, pair: tuple[str, str] = ("in_band", "out_ba
         return activations[r["id"]]
     lines = [f"![{run.name}]({figs['header']})", "", f"# Run report — `{run.name}`", "",
              f"model `{model}` · {when} · samples: " + ", ".join(f"{c}={len(v)}" for c, v in by.items()), ""]
+    if manifest.get("backend"):
+        lines += [f"backend: {describe_backend(manifest['backend'])}", ""]
     if manifest.get("sampler"):
         sp = manifest["sampler"]
         lines += [f"sampler: canvas {sp.get('canvas_length')} · ≤ {sp.get('max_denoising_steps')} steps · "
@@ -268,6 +273,13 @@ def find_log_file(run: Path, explicit: str | Path | None = None) -> Path | None:
     return None
 
 
+def describe_backend(b: dict) -> str:
+    """One line naming the build, e.g. "backend `mlx` · `<id>` · 4-bit (+N overrides)"."""
+    q = b.get("quantization")
+    quant = f"{q['default']['bits']}-bit (+{q['overrides']} overrides)" if q else "unquantised"
+    return f"backend `{b.get('backend')}` · `{b.get('model_id')}` · {quant}"
+
+
 def log_entry(run: Path, report: dict, pair: tuple[str, str], when: str) -> str:
     a, b = pair
     sig = [(k, v) for k, v in report.get("tests", {}).items() if v.get("p") is not None and v["p"] < 0.05]
@@ -275,6 +287,8 @@ def log_entry(run: Path, report: dict, pair: tuple[str, str], when: str) -> str:
     counts = ", ".join(f"{c}={n}" for c, n in report.get("n", {}).items())
     lines = [f"\n## {when} · `{run.name}` · model `{report.get('model', '?')}`", "",
              f"- conditions: {counts}; compared `{a}` vs `{b}`"]
+    if report.get("backend"):
+        lines.append(f"- {describe_backend(report['backend'])}")
     if sig:
         lines.append("- scalars that moved (p < 0.05): " + "; ".join(
             f"`{k}` {v['median_a']:.3g} → {v['median_b']:.3g} (p={v['p']:.2g})" for k, v in sig[:6]))

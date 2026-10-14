@@ -52,6 +52,8 @@ where motion carries meaning.
   pinned by `docs/contract/noise_vectors.json`. Change both or neither.
 - `.bbrec` and seed-bundle formats: `bbrec/src/{recording,seed}.rs` ⇄
   `harness/babble_harness/{recording,noise}.py`.
+- `harness/babble_harness/models/mlx_gemma.py` ⇄ `models/diffusion_gemma.py`,
+  pinned by `harness/tests/test_mlx_adapter.py` (local only; needs `.[mlx]`).
 - The sampler mirrors Transformers' `generation_diffusion_gemma.py`;
   `harness/tests/test_reference_parity.py` enforces it. If Transformers
   changes, the parity test tells you first.

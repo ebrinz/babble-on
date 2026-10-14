@@ -38,6 +38,7 @@ cd harness
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -e ".[dev]"          # numpy, torch, pytest
 uv pip install --python .venv/bin/python -e ".[model]"        # transformers ≥ 5.8 for the real model
+uv pip install --python .venv/bin/python -e ".[mlx]"          # Apple Silicon: mlx-vlm 0.7.6 for --model mlx
 .venv/bin/python -m pytest -q                                 # no weights needed (tokenizer tests skip when not cached)
 ```
 
@@ -57,7 +58,7 @@ ones:
 | NVIDIA NVFP4 checkpoint | `--quant nvfp4` | Blackwell-class GPU with FP4 kernels (~18 GB) | the officially supported 4-bit path |
 | bitsandbytes NF4 | `--quant bnb4` | CUDA GPU (~16 GB) | plain bnb only quantises `nn.Linear`; the MoE experts (≈85 % of the weights) stay bf16 unless Unsloth's per-expert Linear4bit swap is installed. The CLI prints the quantised parameter share after loading — expect > 0.8, not 0.15 |
 | GGUF Q4_K_M via llama.cpp | — | any (~18 GB RAM) | fastest on a Mac, but exposes no hidden states or routing; usable for the sampler only, through a future `llama-cpp-python` denoiser |
-| MLX 4-bit (mlx-vlm ≥ 0.6.3) | — | Apple Silicon | same caveat as GGUF today; an MLX denoiser with hooks is feasible since MLX models are plain Python |
+| MLX 4-bit (`mlx-community/diffusiongemma-26B-A4B-it-4bit`) | `--model mlx` (`--model-id` picks another MLX build) | Apple Silicon, ≥ 24 GB (~18 GB peak) | local bench: same tape, sampler and captures; results describe the quantised model |
 
 On a 32 GB Mac the realistic route is GGUF/MLX for generation and a rented
 CUDA box for the activation captures.
@@ -119,7 +120,7 @@ speaks the newline-JSON protocol in [`../sidecar/README.md`](../sidecar/README.m
 (`steps`, `seq_len`, `entropy_hex`, `prompt` → `step`/`done` events). The
 Tauri app spawns it when the engine drop-down is set to DiffusionGemma,
 finding this directory's `.venv` in a dev checkout. Environment knobs read by
-the app: `BABBLE_SIDECAR_MODEL` (`diffusion_gemma` | `tiny` | `stub`) and
+the app: `BABBLE_SIDECAR_MODEL` (`diffusion_gemma` | `mlx` | `tiny` | `mlx_tiny` | `stub`) and
 `BABBLE_SIDECAR_CMD` (full command line; overrides everything, e.g. to point
 at an interpreter on a GPU box over SSH). `tiny` lets you exercise the whole
 app path without weights.
@@ -135,6 +136,13 @@ app path without weights.
 
 ## Caveats
 
+- `models/mlx_gemma.py` is held to the Transformers adapter on the tiny model
+  with MLX on the CPU (`tests/test_mlx_adapter.py`: logits and hidden states
+  within 1e-5, router counts and logit-lens equal, identical trajectories from
+  the same tape). The GPU differs at ~1e-3 from fp32 arithmetic order. Those
+  tests run locally only (CI is Linux). Results from an MLX build describe the
+  quantised model: keep every condition of a run on one build (the manifest's
+  `backend` block records it) and re-run a finding on bf16.
 - `models/diffusion_gemma.py` is validated against the Transformers 5.18
   classes on a tiny random model (`tests/test_hf_adapter.py`), step-for-step
   against the reference `generate` loop with its RNG routed through the tape

@@ -306,3 +306,23 @@ the app is to make inference respond to byte statistics, the bytes must
 enter through something the sampler integrates rather than hashes (e.g. the
 confidence threshold, temperature, or unmasking order), or the question must
 move to structure-sensitive features of the stream. Open, product call.
+
+## 2026-10-13 · method change · MLX backend for the harness (`--model mlx`)
+
+- Manual entry. Implemented the 2026-10-06 MLX backend spec on the M1 Pro / 32 GiB:
+  `harness/babble_harness/models/mlx_gemma.py` wraps mlx-vlm 0.7.6 behind the `Denoiser`
+  protocol; `mlx_tiny` rebuilds the tiny random-weight model in MLX with the same weights.
+- Parity (MLX on CPU vs Transformers, tiny model): logits within 1e-5 with and without
+  self-conditioning, hidden states within 1e-5, router counts and logit-lens equal, identical
+  canvases at every step from the same tape. GPU repeat bit-identical; GPU vs CPU within 1e-2.
+  Real 4-bit weights (opt-in test): prompt tokens identical to the Google processor's,
+  self-conditioning in bf16, repeat bit-identical, 4-bit default with 236 8-bit overrides.
+- Deviations from the spec: (1) the CPU parity tests disable MLX compilation, because MLX
+  JIT-compiles fused CPU kernels with the system toolchain and this Mac's Command Line Tools
+  cannot link against the macOS 27 SDK; the arithmetic is the same, unfused. (2) The config
+  translation refuses a `None` only where mlx-vlm types the field as non-optional:
+  `use_bidirectional_attention = None` is legal and only affects image tokens. (3) `describe()`
+  reads quantisation from the checkpoint's config.json rather than counting modules, since the
+  4-bit build has more 8-bit modules than 4-bit ones.
+- Implication: the coherence dose-response can now run through the harness sampler, where every
+  categorical draw is a tape uniform, instead of mlx-vlm's seeded PRNG at T = 0.

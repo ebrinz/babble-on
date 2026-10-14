@@ -1,5 +1,6 @@
 """Denoiser implementations: ``stub`` (headless, deterministic) and
-``diffusion_gemma`` (Transformers adapter with interpretability hooks)."""
+``diffusion_gemma`` (Transformers adapter with interpretability hooks),
+``mlx`` (the same on Apple Silicon via mlx-vlm), ``tiny`` / ``mlx_tiny`` (random weights)."""
 from __future__ import annotations
 
 
@@ -20,7 +21,28 @@ def load_denoiser(name: str, **kw):
         d = DiffusionGemmaDenoiser(tiny_model(kw.pop("seed", 0)), capture_layers=kw.pop("capture_layers", (1, 2, 3)), **kw)
         d.set_prompt_ids = _ids_prompt(d)
         return d
-    raise ValueError(f"unknown model '{name}' (stub | tiny | diffusion_gemma)")
+    if name == "mlx":
+        _require_mlx()
+        from .mlx_gemma import MLXGemmaDenoiser
+        if "model" in kw:
+            return MLXGemmaDenoiser(**kw)
+        return MLXGemmaDenoiser.from_pretrained(**kw)
+    if name == "mlx_tiny":
+        # the MLX adapter on the same tiny random-weight model as `tiny`
+        _require_mlx()
+        from .mlx_gemma import MLXGemmaDenoiser
+        from .tiny import tiny_mlx_model
+        d = MLXGemmaDenoiser(tiny_mlx_model(kw.pop("seed", 0)), capture_layers=kw.pop("capture_layers", (1, 2, 3)), **kw)
+        d.set_prompt_ids = _ids_prompt(d)
+        return d
+    raise ValueError(f"unknown model '{name}' (stub | tiny | diffusion_gemma | mlx | mlx_tiny)")
+
+
+def _require_mlx():
+    try:
+        import mlx_vlm  # noqa: F401
+    except ImportError as e:
+        raise ImportError("the mlx backend needs mlx-vlm: pip install -e '.[mlx]' (Apple Silicon only)") from e
 
 
 def _ids_prompt(d):

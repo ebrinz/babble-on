@@ -7,8 +7,9 @@
 //!   2. the first candidate root holding `harness/.venv/bin/python`: the dev
 //!      checkout (compile-time path), the ancestors of the running executable,
 //!      and the app-data directory — run as `… -m babble_harness.cli serve
-//!      --model $BABBLE_SIDECAR_MODEL` (default `diffusion_gemma`; `tiny` and
-//!      `stub` are the weight-free models for development)
+//!      --model $BABBLE_SIDECAR_MODEL` (default `diffusion_gemma`; `mlx` is the
+//!      4-bit MLX build on Apple Silicon; `tiny`, `mlx_tiny` and `stub` are the
+//!      weight-free models for development)
 //!
 //! The process stays resident after the first generation (the model load is
 //! the expensive part); it is dropped and respawned if it exits or errors at

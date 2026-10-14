@@ -38,7 +38,7 @@ def main(argv=None) -> int:
 
     p = sub.add_parser("run", help="run conditions × seeds × prompts")
     p.add_argument("out")
-    p.add_argument("--model", default="stub", help="stub | tiny | diffusion_gemma")
+    p.add_argument("--model", default="stub", help="stub | tiny | mlx_tiny | diffusion_gemma | mlx (Apple Silicon)")
     p.add_argument("--recording", action="append", default=[], help=".bbrec from the app or record-serial")
     p.add_argument("--remote", action="append", default=[], help=".bbrec from fetch-anu (remote control arm)")
     p.add_argument("--seed-dir", action="append", default=[], help="directory of app-exported *.seed.json bundles")
@@ -47,9 +47,9 @@ def main(argv=None) -> int:
     p.add_argument("--allow-concat", action="store_true", help="join run tails to cut more seeds (weaker provenance)")
     p.add_argument("--prompt", action="append", default=[], help="repeatable; default: one empty prompt")
     p.add_argument("--no-activations", action="store_true")
-    p.add_argument("--layers", default="6,12,18,24,30", help="decoder layers to capture (diffusion_gemma)")
+    p.add_argument("--layers", default="6,12,18,24,30", help="decoder layers to capture (diffusion_gemma, mlx)")
     p.add_argument("--model-id", default=None)
-    p.add_argument("--quant", default=None, help="none | nvfp4 | bnb4 (diffusion_gemma)")
+    p.add_argument("--quant", default=None, help="none | nvfp4 | bnb4 (diffusion_gemma; mlx builds are chosen by --model-id)")
     _add_sampler_args(p)
 
     p = sub.add_parser("analyze", help="write report.md/.json (+ SVG figures) for a run and append to the experiment log")
@@ -112,9 +112,12 @@ def main(argv=None) -> int:
         from .runner import analyze_run, build_conditions, run_experiment
         cfg = _cfg(a)
         kw = {}
+        if a.model in ("mlx", "mlx_tiny") and a.quant:
+            log("--quant does not apply to --model mlx: the MLX builds are pre-quantised, choose one with --model-id")
+            return 2
         if a.model == "stub":
             kw = dict(vocab_size=cfg.vocab_size, canvas_length=cfg.canvas_length)
-        elif a.model == "tiny":
+        elif a.model in ("tiny", "mlx_tiny"):
             kw = {}
         else:
             kw = dict(capture_layers=tuple(int(x) for x in a.layers.split(",") if x))
