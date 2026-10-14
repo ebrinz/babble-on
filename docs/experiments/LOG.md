@@ -326,3 +326,34 @@ move to structure-sensitive features of the stream. Open, product call.
   4-bit build has more 8-bit modules than 4-bit ones.
 - Implication: the coherence dose-response can now run through the harness sampler, where every
   categorical draw is a tape uniform, instead of mlx-vlm's seeded PRNG at T = 0.
+
+## 2026-10-14 — Coherence dose-response through the harness sampler (MLX, T 0.8 → 0.4)
+
+**Question:** The T = 0 dose run (mlx-vlm, entropy only in the canvas) saw no
+bias up to δ = 0.1. Does routing every categorical draw through the tape, as
+the harness sampler does, let mean-bit bias reach the text?
+
+**Done:** `spikes/coherence/harness_dose.py` on the new `--model mlx` backend
+(commit 09868c0), driver commit fa32172. Same six doses plus the LCG ceiling,
+50 per arm, 99 328-byte reservoirs from the 2026-10-12 ordinary TrueRNG pool,
+default harness sampler (T 0.8 → 0.4, entropy bound 0.1, early stop).
+350/350, 0 errors, 2.8 h. Artefacts in
+`spikes/coherence/runs/2026-10-13-dose-harness/`; table in the spike README.
+A follow-up re-ran three δ = 0 and three LCG samples keeping the traces.
+
+**Result:** No dose effect on GPT-2 nll, steps or distinct ratio; the lone
+p = 0.004 at δ = 10⁻³ fails a correction for 18 comparisons and is not
+monotonic. The LCG ceiling also fails to separate (d = +0.32, p = 0.12).
+Mechanism, measured: of 7 673 committed draws at δ = 0 the tape picked a
+non-argmax token 0 times, and 2 of 8 295 under the LCG, whose uniforms are
+all below 0.25. Median entropy at commit is 0.0000 nats. The entropy-bound
+selector commits only positions that are already certain.
+
+**Decision:** With the reference DiffusionGemma sampler, the device's bytes
+never choose a word: they shape the noise the model writes over, and the
+categorical draw is a formality. Mean-bit coherence cannot reach the text
+through this sampler at any dose tested, and the positive control shows even
+gross structure barely does. Giving entropy a real vote needs a sampler
+change that departs from the reference, e.g. committing positions in a
+tape-chosen order or at a looser entropy bound so draws land where the model
+is uncertain. That is a design decision about what the app claims, open.

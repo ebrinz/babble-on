@@ -1,0 +1,46 @@
+{
+ "model": "mlx",
+ "backend": {
+  "backend": "mlx",
+  "model_id": "mlx-community/diffusiongemma-26B-A4B-it-4bit",
+  "mlx": "0.32.3",
+  "mlx_vlm": "0.7.6",
+  "quantization": {
+   "default": {
+    "bits": 4,
+    "group_size": 64,
+    "mode": "affine"
+   },
+   "overrides": 236
+  }
+ },
+ "sampler": {
+  "canvas_length": 256,
+  "vocab_size": 262144,
+  "max_denoising_steps": 48,
+  "t_max": 0.8,
+  "t_min": 0.4,
+  "entropy_bound": 0.1,
+  "confidence_threshold": 0.005,
+  "stability_threshold": 1,
+  "early_stop": true
+ },
+ "prompt_ids": [
+  2,
+  105,
+  2364,
+  107,
+  6974,
+  496,
+  2822,
+  16622,
+  529,
+  57243,
+  236761,
+  106,
+  107,
+  105,
+  4368,
+  107
+ ]
+}

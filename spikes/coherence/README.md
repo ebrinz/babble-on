@@ -145,3 +145,40 @@ error while another process held GPU memory; since each sample is a pure
 function of its reservoir, they were regenerated on the same bytes and all
 350 are present. GPT-2 log-perplexity on 256-token prose at n = 50 per arm
 is powered for d ≈ 0.57; a dose effect smaller than that is not excluded.
+
+## Dose-response through the harness sampler 2026-10-13
+
+The same doses rerun through the harness's `sample_canvas` on the new MLX
+backend (`harness_dose.py`, run in `harness/.venv`), where every draw is a
+tape uniform: the initial canvas, one categorical draw per position per step
+at the Transformers schedule T 0.8 → 0.4, and the renoise. 50 samples per
+arm, 99 328-byte reservoirs, 350/350 generated with no errors in 2.8 h.
+
+    .venv/bin/python dose_build.py runs/2026-10-12/ordinary.bin runs/2026-10-13-dose-harness --per-condition 50 --sample-bytes 99328
+    ../../harness/.venv/bin/python harness_dose.py runs/2026-10-13-dose-harness/batch.bin runs/2026-10-13-dose-harness/manifest.json runs/2026-10-13-dose-harness/batch.jsonl
+
+| δ | GPT-2 nll mean | d vs δ=0 | p | steps p | distinct p |
+|---|---|---|---|---|---|
+| 0 | 3.543 | | | | |
+| 10⁻⁴ | 3.451 | −0.37 | 0.07 | 1.00 | 0.36 |
+| 10⁻³ | 3.413 | −0.59 | 0.004 | 0.19 | 0.08 |
+| 10⁻² | 3.442 | −0.37 | 0.07 | 0.24 | 0.16 |
+| 3·10⁻² | 3.528 | −0.06 | 0.77 | 0.015 | 0.09 |
+| 10⁻¹ | 3.479 | −0.26 | 0.19 | 0.29 | 0.29 |
+| LCG | 3.615 | +0.32 | 0.12 | 0.88 | 0.83 |
+
+No dose effect. The one p below 0.01 (δ = 10⁻³) does not survive a
+correction for 18 comparisons and sits between two doses that show nothing;
+every dose reads below δ = 0 because they share that arm, whose mean happens
+to be the second highest. Unlike the T = 0 run, the LCG ceiling does not
+separate either.
+
+**Why.** Re-running three δ = 0 and three LCG samples with the traces kept:
+of 7 673 committed draws at δ = 0 the tape chose a token other than the
+argmax 0 times, and of 8 295 under the LCG 2 times, although every LCG
+uniform is below 0.25. The median entropy at the moment of commit is 0.0000
+nats. The sampler's entropy-bound selection only commits positions whose
+distribution is already a point mass, so the categorical draw is a formality;
+the tape reaches the text only through the canvas noise at uncommitted
+positions, which the model overwrites. Sampling at T > 0 does not by itself
+give entropy a vote.
