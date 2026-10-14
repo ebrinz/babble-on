@@ -37,3 +37,9 @@ def test_build_round_robins_doses_then_lcg_and_records_delta():
 def test_build_raises_when_carrier_runs_out():
     with pytest.raises(ValueError, match="carrier exhausted"):
         build(bytes(500), per_condition=1, sample_bytes=100, seed=0)
+
+
+def test_build_honours_a_larger_sample_size():
+    carrier = bytes(range(256)) * 400
+    batch, samples = build(carrier, per_condition=1, sample_bytes=1000, seed=0)
+    assert len(batch) == len(samples) * 1000

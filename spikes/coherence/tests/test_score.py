@@ -29,3 +29,9 @@ def test_score_line_errors_and_empty_text_get_null_nll():
     blank = {"index": 2, "text": "   \n", "consumed": 2052, "error": None}
     out = score_line(blank, lambda text: 1.0)
     assert out["gpt2_nll"] is None and out["steps"] is None and out["distinct_ratio"] is None
+
+
+def test_score_line_keeps_a_recorded_step_count():
+    # the harness driver records steps directly; its tape spends 2 KB per step, not 1 KB
+    line = {"index": 3, "text": "the cat", "consumed": 25600, "steps": 12, "error": None}
+    assert score_line(line, lambda text: 1.0)["steps"] == 12

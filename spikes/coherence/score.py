@@ -25,7 +25,8 @@ def score_line(line: dict, nll_fn) -> dict:
         **line,
         "gpt2_nll": float(nll_fn(text)) if usable else None,
         "distinct_ratio": distinct_ratio(text) if usable else None,
-        "steps": steps_from_consumed(line["consumed"]) if usable and line.get("consumed") else None,
+        "steps": (line["steps"] if "steps" in line else steps_from_consumed(line["consumed"]))
+        if usable and line.get("consumed") else None,
     }
 
 

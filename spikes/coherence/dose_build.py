@@ -54,13 +54,15 @@ def main():
     p.add_argument("outdir")
     p.add_argument("--per-condition", type=int, default=50)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--sample-bytes", type=int, default=SAMPLE_BYTES,
+                   help="per-sample reservoir; the harness sampler needs budget_bytes(256, 48) = 99328")
     args = p.parse_args()
-    batch, samples = build(Path(args.carrier).read_bytes(), args.per_condition, seed=args.seed)
+    batch, samples = build(Path(args.carrier).read_bytes(), args.per_condition, args.sample_bytes, seed=args.seed)
     out = Path(args.outdir)
     out.mkdir(parents=True, exist_ok=True)
     (out / "batch.bin").write_bytes(batch)
     manifest = {
-        "sample_bytes": SAMPLE_BYTES, "prompt": PROMPT, "temperature": 0.0, "max_tokens": 256,
+        "sample_bytes": args.sample_bytes, "prompt": PROMPT, "temperature": 0.0, "max_tokens": 256,
         "carrier": args.carrier, "doses": list(DOSES), "seed": args.seed, "samples": samples,
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1))
