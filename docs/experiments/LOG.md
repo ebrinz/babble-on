@@ -409,3 +409,31 @@ DiffusionGemma for the app. Not pursued further unless an instruction-tuned
 or larger checkpoint appears. Possible later use: entropy-authored seed text
 from Cola-DLM as raw material for DiffusionGemma, which would keep content
 authorship in the noise rather than in designed word lists.
+
+## 2026-10-14 — Device-composed prompts shipped in the DiffusionGemma engine
+
+**Question:** Can the app let the TrueRNG write DiffusionGemma's brief, so
+the device authors content rather than wording (prompt-composition spike,
+2026-10-14)?
+
+**Done:** Spec `docs/superpowers/specs/2026-10-14-prompt-composition-design.md`,
+plan `docs/superpowers/plans/2026-10-14-prompt-composition.md`. The spike's
+composer moved to `harness/babble_harness/compose.py`; `serve.py` takes
+`compose: true`, spends the first 16 entropy bytes on the brief and emits a
+`brief` message; the app draws 16 more seed bytes when the prompt is blank
+with DiffusionGemma selected, sends the flag, and shows the brief above the
+text with bank-drawn picks in gold. Commits 6567f91, a7c26e9, a976717,
+f7a8f44 (branch `feat/prompt-composition`). Two things the plan missed, both
+found by tests: the Rust sidecar reader whitelisted message types and would
+have dropped `brief`; and the pick class `bank` collided with the
+anomaly-bank meter's flex rule.
+
+**Result:** Tests: harness 82, src-tauri cargo 35, bbrec 13, vitest 8,
+headless UI, all green; the stub-sidecar round trip sees `brief` before the
+first step. Judged by eye: _(fill in after running the app with the TrueRNG:
+does the brief line read well, do bank-drawn picks stand out, does the
+composed text follow the brief as in the spike)_.
+
+**Decision:** Shipped. Open: list design (the spike's lists are a first
+draft) and whether a typed prompt should be allowed to extend a composed
+brief (spec non-goal for now).
