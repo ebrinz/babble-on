@@ -120,6 +120,12 @@ await page.click("#gen-btn"); // new generation, line cleared
 await page.evaluate(() => window.__emit("diffusion", { type: "done", i: 5, total: 5, tokens: ["x"], elapsed: 1, seed: "entropy", brief: { picks: { subject: "a cup of tea", setting: "in a small town", mood: "warm", form: "a postcard" }, prompt: "…" } }));
 assert((await text("#gen-brief")) === "a postcard · a cup of tea · in a small town · warm", "done renders the brief when the brief event was missed");
 
+// a long reply scrolls inside the output pane instead of growing the page
+await page.evaluate(() => window.__emit("diffusion", { type: "done", i: 5, total: 5, tokens: Array.from({ length: 300 }, (_, i) => (i % 12 === 0 ? "\n\n" : " word" + i)), elapsed: 1, seed: "entropy" }));
+const scroll = await page.evaluate(() => { const o = document.getElementById("gen-output"); return { overflow: o.scrollHeight > o.clientHeight, page: document.documentElement.scrollHeight <= innerHeight, thumb: getComputedStyle(o, "::-webkit-scrollbar-thumb").backgroundColor }; });
+assert(scroll.overflow && scroll.page, `long reply scrolls in the pane, page does not grow: ${JSON.stringify(scroll)}`);
+assert(scroll.thumb !== "rgba(0, 0, 0, 0)" && scroll.thumb !== "", `scrollbar thumb is styled visible: ${scroll.thumb}`);
+
 // export seed
 await page.click("#export-seed");
 await page.waitForFunction(() => document.getElementById("gen-status").textContent.includes("seed exported"));

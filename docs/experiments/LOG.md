@@ -459,3 +459,20 @@ same evening after the first composed run showed the markers boiling in
 the live view: `liveTokens()` blanks the header span and the special
 markers (`<eos>`, `<pad>`, `<bos>`, turn and channel markers) in place
 during steps, keeping every position's slot and heat.
+
+## 2026-10-14 — Diffusion pane: visible scrollbar for long replies
+
+**Question:** A long DiffusionGemma reply looked cut off with no sign that
+more text existed. Does the pane scroll, and is the overflow visible?
+
+**Done:** Measured in headless Chromium: the pane already scrolls (300
+tokens: 1473 px of content in a 361 px box) and the page does not grow, so
+the flex layout is right; macOS overlay scrollbars simply hide until you
+scroll. Added an always-visible thin scrollbar to `.gen-output`
+(`src/style.css`) and a headless assertion that a long reply overflows the
+pane, not the page, with a styled thumb.
+
+**Result:** Headless UI passed. By eye: _(confirm in the running app)_.
+
+**Decision:** Shipped. If WKWebView ever fails to scroll the nested pane,
+that is a different bug; this change only makes the existing scroll visible.

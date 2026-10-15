@@ -31,6 +31,13 @@ header button.rec { color:#ff4d4d; border-color:#5a2222; }
 .gen-params .check input { accent-color:var(--gold); }
 .gen-params label > span { color:var(--turq); min-width:30px; }
 .gen-output { flex:1; overflow-y:auto; min-height:0; white-space:pre-wrap; line-height:1.7; font-size:17px; letter-spacing:0.1px; }
+/* Long replies scroll inside the pane; keep the scrollbar visible so the
+   overflow is evident (macOS hides overlay scrollbars until you scroll). */
+.gen-output { scrollbar-gutter:stable; }
+.gen-output::-webkit-scrollbar { width:8px; }
+.gen-output::-webkit-scrollbar-track { background:#0f1513; border-radius:4px; }
+.gen-output::-webkit-scrollbar-thumb { background:#2f4a40; border-radius:4px; }
+.gen-output::-webkit-scrollbar-thumb:hover { background:var(--gold); }
 .gen-brief { font-size:13px; color:#9aaaa5; margin:0 0 4px; min-height:1.2em; }
 .gen-brief .pick.from-bank { color:var(--gold); }
 .gen-output .tok { transition:color 0.25s linear; border-radius:2px; }
