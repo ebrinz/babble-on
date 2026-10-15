@@ -132,7 +132,7 @@ fn sidecar_roots(app: &tauri::AppHandle) -> Vec<PathBuf> {
 }
 
 /// One DiffusionGemma generation through the sidecar, forwarding its
-/// `step`/`done`/`error` messages as `diffusion` events. Spawns the sidecar
+/// `brief`/`step`/`done`/`error` messages as `diffusion` events. Spawns the sidecar
 /// on first use (emitting `loading` while the model becomes resident).
 fn run_gemma_generation(
     app: &tauri::AppHandle,

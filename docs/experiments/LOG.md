@@ -434,6 +434,7 @@ first step. Judged by eye: _(fill in after running the app with the TrueRNG:
 does the brief line read well, do bank-drawn picks stand out, does the
 composed text follow the brief as in the spike)_.
 
-**Decision:** Shipped. Open: list design (the spike's lists are a first
-draft) and whether a typed prompt should be allowed to extend a composed
-brief (spec non-goal for now).
+**Decision:** Built and merged; open pending the eye judgement above (one
+run with the TrueRNG attached), after which this entry is updated. Also
+open: list design (the spike's lists are a first draft) and whether a typed
+prompt should be allowed to extend a composed brief (spec non-goal for now).
