@@ -70,6 +70,15 @@ and streams back:
 If `entropy_hex` is present, those bytes (4 per Gaussian, `uint32 → uniform →
 ndtri`) become the literal initial-noise tensor; otherwise a seeded PRNG is used.
 
+With `"compose": true` (the app's DiffusionGemma engine with a blank prompt)
+the first 16 bytes of `entropy_hex` choose a subject, setting, mood and form
+(`babble_harness/compose.py`), the prompt is built from them (any `prompt`
+field is ignored), and the sidecar emits
+`{"type":"brief","picks":{"subject":…,"setting":…,"mood":…,"form":…},"prompt":"…","bytes":16}`
+before the first `step`; `done` repeats it under `"brief"`. `entropy_hex`
+must then hold `16 + budget_bytes(seq_len, steps)` bytes; there is no PRNG
+fallback for a composed brief.
+
 ## Try it standalone
 
 ```bash

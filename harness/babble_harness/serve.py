@@ -10,6 +10,12 @@ of the Plaid engine.
 
 ``entropy_hex`` must hold at least ``budget_bytes(seq_len, steps)`` bytes;
 with none, a PRNG tape is used and the reply says so (``"seed":"prng"``).
+With ``"compose": true`` the first 16 entropy bytes pick a subject, setting,
+mood and form (``compose.py``) and become the prompt; any ``"prompt"`` in the
+request is ignored; ``entropy_hex`` is then required and must hold
+``16 + budget_bytes(seq_len, steps)`` bytes. The reply stream gains
+``{"type":"brief","picks":{...},"prompt":"...","bytes":16}`` before the first
+``step``, and ``done`` repeats the brief under ``"brief"``.
 ``seq_len`` must equal the model's canvas length (256 for DiffusionGemma,
 16 for the development stub); any other value is refused with an ``error``
 reply so the host never gets a canvas it did not ask for.
@@ -20,6 +26,7 @@ import json
 import sys
 import time
 
+from .compose import BYTES_PER_BRIEF, compose
 from .models import load_denoiser
 from .noise import EntropyTape, budget_bytes, prng_tape
 from .sampler import SamplerConfig, sample_canvas
@@ -51,8 +58,22 @@ def serve(model: str = "diffusion_gemma", **model_kw) -> None:
                 emit({"type": "error", "message": f"seq_len {seq_len} unsupported: this model's canvas is {canvas}"}); continue
             cfg = SamplerConfig(canvas_length=seq_len, vocab_size=getattr(den, "vocab_size", 262_144),
                                 max_denoising_steps=steps, early_stop=bool(req.get("early_stop", True)))
+            compose_brief = bool(req.get("compose", False))
             need = budget_bytes(seq_len, steps)
-            if req.get("entropy_hex"):
+            brief = None
+            if compose_brief:
+                if not req.get("entropy_hex"):
+                    emit({"type": "error", "message": "compose needs entropy_hex: the brief must come from the stream"}); continue
+                raw = bytes.fromhex(req["entropy_hex"])
+                total = BYTES_PER_BRIEF + need
+                if len(raw) < total:
+                    emit({"type": "error", "message": f"entropy_hex holds {len(raw)} bytes, need {total} "
+                                                      f"({BYTES_PER_BRIEF} for the brief + {need} for the sampler)"}); continue
+                prompt_text, picks = compose(raw[:BYTES_PER_BRIEF])
+                brief = {"picks": picks, "prompt": prompt_text}
+                tape, seed = EntropyTape(raw[BYTES_PER_BRIEF:], label="app"), "entropy"
+                emit({"type": "brief", **brief, "bytes": BYTES_PER_BRIEF})
+            elif req.get("entropy_hex"):
                 raw = bytes.fromhex(req["entropy_hex"])
                 if len(raw) < need:
                     emit({"type": "error", "message": f"entropy_hex holds {len(raw)} bytes, need {need}"}); continue
@@ -60,7 +81,7 @@ def serve(model: str = "diffusion_gemma", **model_kw) -> None:
             else:
                 tape, seed = prng_tape(int(req.get("seed", 0)), need), "prng"
             if hasattr(den, "set_prompt"):
-                den.set_prompt(req.get("prompt") or None)
+                den.set_prompt(brief["prompt"] if brief else (req.get("prompt") or None))
             every = int(req.get("preview_every", 1))
             t0 = time.time()
 
@@ -75,7 +96,8 @@ def serve(model: str = "diffusion_gemma", **model_kw) -> None:
             toks = den.decode_each(ids) if hasattr(den, "decode_each") else [str(i) for i in ids]
             text = den.decode(den.trim_after_eos(ids)) if hasattr(den, "decode") else "".join(toks)
             emit({"type": "done", "i": res.n_steps, "total": steps, "tokens": toks, "text": text,
-                  "elapsed": round(time.time() - t0, 1), "seed": seed, "entropy_used": res.tape_consumed,
+                  "elapsed": round(time.time() - t0, 1), "seed": seed, "brief": brief,
+                  "entropy_used": res.tape_consumed + (BYTES_PER_BRIEF if brief else 0),
                   "seq_len": seq_len, "stopped_early": res.stopped_early})
         except Exception as e:  # noqa: BLE001 — report to the host
             emit({"type": "error", "message": f"{type(e).__name__}: {e}"})

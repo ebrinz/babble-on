@@ -117,7 +117,7 @@ crystallisation heat map.
 
 `python -m babble_harness.cli serve --model diffusion_gemma [--quant …]`
 speaks the newline-JSON protocol in [`../sidecar/README.md`](../sidecar/README.md)
-(`steps`, `seq_len`, `entropy_hex`, `prompt` → `step`/`done` events). The
+(`steps`, `seq_len`, `entropy_hex`, `prompt` or `compose` → `brief`/`step`/`done` events). The
 Tauri app spawns it when the engine drop-down is set to DiffusionGemma,
 finding this directory's `.venv` in a dev checkout. Environment knobs read by
 the app: `BABBLE_SIDECAR_MODEL` (`diffusion_gemma` | `mlx` | `tiny` | `mlx_tiny` | `stub`) and
