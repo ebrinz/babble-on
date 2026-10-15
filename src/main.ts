@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor, crystallize, heatColor, seedStamp, recLabel, briefLine } from "./render";
+import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor, crystallize, heatColor, seedStamp, recLabel, briefLine, finalTokens } from "./render";
 import "./style.css";
 
 function canvas(id: string): [CanvasRenderingContext2D, number, number] {
@@ -208,7 +208,7 @@ listen<any>("diffusion", (e) => {
       // The sidecar says which tape it used; anything but hardware entropy is a loud warning.
       if (m.seed && m.seed !== "entropy") genStatus.textContent += ` · ⚠ seeded from ${m.seed}, not the stream`;
       genOutput.classList.remove("boiling");
-      renderCrystal(m.tokens, false);
+      renderCrystal(finalTokens(m.tokens), false);
       genBtn.disabled = false;
       break;
     case "error":

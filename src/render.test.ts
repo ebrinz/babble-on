@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { envelopePoints, bandColor, verdictColor, crystallize, heatColor, seedStamp, recLabel, briefLine } from "./render";
+import { envelopePoints, bandColor, verdictColor, crystallize, heatColor, seedStamp, recLabel, briefLine, finalTokens } from "./render";
 
 describe("render helpers", () => {
   it("envelope is the parabola z*sqrt(k)", () => {
@@ -55,5 +55,14 @@ describe("render helpers", () => {
     expect(briefLine(picks, 99_344).parts.every((p) => p.bank)).toBe(true);
     // 7 bytes: subject's 4 are covered, setting's are not
     expect(briefLine(picks, 7).parts.map((p) => p.bank)).toEqual([false, true, false, false]);
+  });
+  it("finalTokens drops the thought-channel header and everything from the first <eos>", () => {
+    expect(finalTokens(["<|channel>", "thought", "\n", "<channel|>", "The", " sea", "<eos>", "<eos>"]))
+      .toEqual(["The", " sea"]);
+    expect(finalTokens(["The", " sea", " at", " night"])).toEqual(["The", " sea", " at", " night"]);
+    // a close marker with no opener before it is ordinary text
+    expect(finalTokens(["x", "<channel|>", "y"])).toEqual(["x", "<channel|>", "y"]);
+    // markers glued to text in one token still count
+    expect(finalTokens(["<|channel>thought", "\n", "<channel|>In", " the"])).toEqual(["In", " the"]);
   });
 });

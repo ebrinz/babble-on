@@ -110,6 +110,8 @@ assert(!(await text("#gen-status")).includes("⚠"), "no warning when the seed c
 await page.evaluate(() => window.__emit("diffusion", { type: "done", i: 5, total: 5, tokens: ["x"], elapsed: 1, seed: "prng" }));
 assert((await text("#gen-status")).includes("seeded from prng"), "a non-entropy seed is flagged");
 assert(!(await page.$eval("#gen-btn", (b) => b.disabled)), "generate re-enabled after done");
+await page.evaluate(() => window.__emit("diffusion", { type: "done", i: 5, total: 5, tokens: ["<|channel>", "thought", "\n", "<channel|>", "The", " sea", "<eos>", "<eos>"], elapsed: 1, seed: "entropy" }));
+assert((await page.$$eval("#gen-output .tok", (t) => t.length)) === 2 && (await text("#gen-output")) === "The sea", "final render hides the channel header and eos padding");
 
 // a done carrying a brief renders it when the brief event was missed
 await page.click("#gen-btn"); // new generation, line cleared

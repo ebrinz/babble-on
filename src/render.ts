@@ -93,6 +93,28 @@ export function briefLine(
 
 /** Label for the record button while a recording is in progress, e.g.
  *  "■ rec 1.2 MiB" (below 1 MiB: KiB). */
+/** The final canvas as the reader should see it: drop the model's empty
+ *  thought-channel header (`<|channel>…<channel|>`) and everything from the
+ *  first `<eos>` on. The live view keeps every position so the text can boil. */
+export function finalTokens(tokens: string[]): string[] {
+  let out = tokens;
+  const open = out.findIndex((t) => t.includes("<|channel>"));
+  if (open >= 0) {
+    const close = out.findIndex((t, i) => i >= open && t.includes("<channel|>"));
+    if (close >= 0) {
+      const tail = out[close].slice(out[close].indexOf("<channel|>") + "<channel|>".length);
+      out = (tail ? [tail] : []).concat(out.slice(close + 1));
+      while (out.length && out[0].trim() === "") out = out.slice(1);
+    }
+  }
+  const eos = out.findIndex((t) => t.includes("<eos>"));
+  if (eos >= 0) {
+    const head = out[eos].slice(0, out[eos].indexOf("<eos>"));
+    out = out.slice(0, eos).concat(head ? [head] : []);
+  }
+  return out;
+}
+
 export function recLabel(bytes: number): string {
   const size = bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MiB` : `${(bytes / 1024).toFixed(0)} KiB`;
   return `■ rec ${size}`;

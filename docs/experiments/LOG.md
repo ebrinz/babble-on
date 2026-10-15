@@ -438,3 +438,20 @@ composed text follow the brief as in the spike)_.
 run with the TrueRNG attached), after which this entry is updated. Also
 open: list design (the spike's lists are a first draft) and whether a typed
 prompt should be allowed to extend a composed brief (spec non-goal for now).
+
+## 2026-10-14 — Final render hides DiffusionGemma's channel scaffolding and eos padding
+
+**Question:** The first live run of the DiffusionGemma engine on the MLX
+sidecar showed the raw canvas: `<|channel>thought` / `<channel|>` at the top
+and a run of `<eos>` tokens at the end. Should the final render hide them
+without losing the live boil?
+
+**Done:** `finalTokens()` in `src/render.ts` drops the thought-channel header
+and everything from the first `<eos>`; `main.ts` applies it on `done` only,
+so the per-position live view is unchanged. vitest and headless cases.
+
+**Result:** Suites green (vitest 9, headless UI). By eye: _(confirm in the
+running app after the next generation)_.
+
+**Decision:** Shipped as a display fix; the sidecar's `text` field was
+already clean, only the token view showed the scaffolding.
