@@ -83,8 +83,10 @@ fn generate(
         return Err("a generation is already in progress".into());
     }
 
+    let compose = should_compose(use_gemma, prompt.as_deref());
     let need = if use_gemma {
-        sidecar::budget_bytes(sidecar::CANVAS_LENGTH, steps)
+        let budget = sidecar::budget_bytes(sidecar::CANVAS_LENGTH, steps);
+        if compose { sidecar::BRIEF_BYTES + budget } else { budget }
     } else {
         n_samples * seq_len * EMBED_DIM * 4
     };
@@ -106,7 +108,7 @@ fn generate(
     let gemma2: Arc<GemmaSidecar> = gemma.inner().clone();
     std::thread::spawn(move || {
         let result = if use_gemma {
-            run_gemma_generation(&app2, &gemma2, steps, prompt, need, draw_seed)
+            run_gemma_generation(&app2, &gemma2, steps, prompt, compose, need, draw_seed)
         } else {
             run_generation(&app2, &diff2, steps, seq_len, n_samples, temperature, noise_scale, ddim, prompt, draw_seed)
         };
@@ -116,6 +118,11 @@ fn generate(
         diff2.release();
     });
     Ok(())
+}
+
+/// A blank prompt with the DiffusionGemma engine means the device writes the brief.
+fn should_compose(use_gemma: bool, prompt: Option<&str>) -> bool {
+    use_gemma && prompt.map(str::trim).map_or(true, str::is_empty)
 }
 
 /// Where `harness/` may live at run time (see `sidecar::candidate_roots`).
@@ -132,6 +139,7 @@ fn run_gemma_generation(
     gemma: &GemmaSidecar,
     steps: usize,
     prompt: Option<String>,
+    compose: bool,
     need: usize,
     draw_seed: impl FnOnce(usize) -> SeedReply,
 ) -> Result<(), String> {
@@ -153,13 +161,16 @@ fn run_gemma_generation(
             seed.bytes.len()
         ));
     }
+    let banked_bytes = (seed.bank_fraction * need as f64).round() as usize;
     let _ = app.emit(
         "diffusion",
-        json!({"type": "seeded", "bank_fraction": seed.bank_fraction, "tags": seed.tags}),
+        json!({"type": "seeded", "bank_fraction": seed.bank_fraction, "tags": seed.tags, "banked_bytes": banked_bytes}),
     );
     let mut req = json!({"steps": steps, "seq_len": sidecar::CANVAS_LENGTH, "preview_every": 1,
                          "entropy_hex": sidecar::hex(&seed.bytes[..need])});
-    if let Some(p) = prompt.as_deref().map(str::trim).filter(|p| !p.is_empty()) {
+    if compose {
+        req["compose"] = json!(true);
+    } else if let Some(p) = prompt.as_deref().map(str::trim).filter(|p| !p.is_empty()) {
         req["prompt"] = json!(p);
     }
     let sc = guard.as_mut().unwrap();
@@ -295,4 +306,17 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod compose_tests {
+    use super::should_compose;
+
+    #[test]
+    fn blank_or_whitespace_prompt_composes_only_for_gemma() {
+        assert!(should_compose(true, None));
+        assert!(should_compose(true, Some("   ")));
+        assert!(!should_compose(true, Some(" sea ")));
+        assert!(!should_compose(false, None));
+    }
 }

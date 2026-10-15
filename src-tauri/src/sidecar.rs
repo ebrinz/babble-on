@@ -30,6 +30,11 @@ pub const fn budget_bytes(seq_len: usize, steps: usize) -> usize {
     4 * seq_len * (1 + 2 * steps)
 }
 
+/// Bytes the sidecar spends on a composed brief (4 per slot: subject,
+/// setting, mood, form) before the sampler tape starts. Mirrors
+/// `babble_harness.compose.BYTES_PER_BRIEF`.
+pub const BRIEF_BYTES: usize = 16;
+
 /// DiffusionGemma's canvas; the sidecar ignores any other `seq_len` for a real model.
 pub const CANVAS_LENGTH: usize = 256;
 
@@ -93,8 +98,8 @@ pub fn resolve_config(roots: &[PathBuf]) -> Result<SidecarConfig, String> {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
     Ready { model: String },
-    /// A `step`, `done` or `error` message, forwarded verbatim (the UI reads
-    /// the same fields the Plaid engine emits).
+    /// A `brief`, `step`, `done` or `error` message, forwarded verbatim (the
+    /// UI reads the same fields the Plaid engine emits, plus `brief`).
     Message(Value),
     /// stdout closed: the process exited.
     Exit,
@@ -105,7 +110,7 @@ pub fn parse_line(line: &str) -> Option<Event> {
     let v: Value = serde_json::from_str(line.trim()).ok()?;
     match v.get("type").and_then(Value::as_str)? {
         "ready" => Some(Event::Ready { model: v.get("model").and_then(Value::as_str).unwrap_or("?").into() }),
-        "step" | "done" | "error" => Some(Event::Message(v)),
+        "brief" | "step" | "done" | "error" => Some(Event::Message(v)),
         _ => None,
     }
 }
@@ -210,6 +215,7 @@ mod tests {
     fn budget_matches_python() {
         assert_eq!(budget_bytes(256, 48), 99_328);
         assert_eq!(budget_bytes(16, 5), 4 * 16 * 11);
+        assert_eq!(BRIEF_BYTES, 16); // babble_harness.compose.BYTES_PER_BRIEF
     }
 
     #[test]
@@ -223,6 +229,7 @@ mod tests {
         assert!(matches!(parse_line(r#"{"type":"step","i":1,"total":5,"tokens":["a"]}"#), Some(Event::Message(_))));
         assert!(matches!(parse_line(r#"{"type":"done","i":5,"total":5,"tokens":[]}"#), Some(Event::Message(_))));
         assert!(matches!(parse_line(r#"{"type":"error","message":"x"}"#), Some(Event::Message(_))));
+        assert!(matches!(parse_line(r#"{"type":"brief","picks":{},"prompt":"Write","bytes":16}"#), Some(Event::Message(_))));
         assert_eq!(parse_line("loading model ..."), None);
         assert_eq!(parse_line(r#"{"type":"unknown"}"#), None);
         assert_eq!(parse_line(""), None);
@@ -295,6 +302,35 @@ mod tests {
         assert_eq!(done["tokens"].as_array().unwrap().len(), seq_len);
         assert_eq!(done["seed"], "entropy");
         assert_eq!(done["total"], steps);
+
+        // compose: 16 extra bytes, a brief before the steps, repeated in done
+        let entropy = vec![7u8; BRIEF_BYTES + budget_bytes(seq_len, steps)];
+        sc.request(&serde_json::json!({
+            "steps": steps, "seq_len": seq_len, "entropy_hex": hex(&entropy), "preview_every": 2, "compose": true
+        }))
+        .unwrap();
+        let mut brief_seen = false;
+        let done = loop {
+            match sc.next_event(Duration::from_secs(60)).unwrap() {
+                Event::Message(v) => match v["type"].as_str() {
+                    Some("brief") => {
+                        assert!(!brief_seen, "brief emitted once");
+                        assert_eq!(v["bytes"], BRIEF_BYTES);
+                        assert!(v["picks"]["subject"].is_string() && v["prompt"].as_str().unwrap().starts_with("Write "));
+                        brief_seen = true;
+                    }
+                    Some("step") => assert!(brief_seen, "brief precedes the first step"),
+                    Some("done") => break v,
+                    Some(t) => panic!("unexpected {t}: {v}"),
+                    None => unreachable!(),
+                },
+                Event::Ready { .. } => continue,
+                Event::Exit => panic!("sidecar exited"),
+            }
+        };
+        assert!(brief_seen);
+        assert!(done["brief"]["picks"]["mood"].is_string());
+        assert_eq!(done["seed"], "entropy");
 
         // too little entropy → protocol error, process stays alive
         sc.request(&serde_json::json!({"steps": 5, "seq_len": 16, "entropy_hex": "00"})).unwrap();
