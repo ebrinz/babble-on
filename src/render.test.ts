@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { envelopePoints, bandColor, verdictColor, crystallize, heatColor, seedStamp, recLabel } from "./render";
+import { envelopePoints, bandColor, verdictColor, crystallize, heatColor, seedStamp, recLabel, briefLine } from "./render";
 
 describe("render helpers", () => {
   it("envelope is the parabola z*sqrt(k)", () => {
@@ -40,5 +40,20 @@ describe("render helpers", () => {
     expect(recLabel(0)).toBe("■ rec 0 KiB");
     expect(recLabel(512 * 1024)).toBe("■ rec 512 KiB");
     expect(recLabel(1.5 * 1048576)).toBe("■ rec 1.5 MiB");
+  });
+  it("briefLine orders form · subject · setting · mood and marks bank-drawn slots", () => {
+    const picks = { subject: "a dog", setting: "on a farm", mood: "calm", form: "a letter" };
+    const none = briefLine(picks, 0);
+    expect(none.text).toBe("a letter · a dog · on a farm · calm");
+    expect(none.parts.map((p) => p.bank)).toEqual([false, false, false, false]);
+    // 8 banked bytes cover subject and setting (slots 0 and 1 in list order)
+    const half = briefLine(picks, 8);
+    expect(half.parts.map((p) => [p.slot, p.bank])).toEqual([
+      ["form", false], ["subject", true], ["setting", true], ["mood", false],
+    ]);
+    expect(briefLine(picks, 16).parts.every((p) => p.bank)).toBe(true);
+    expect(briefLine(picks, 99_344).parts.every((p) => p.bank)).toBe(true);
+    // 7 bytes: subject's 4 are covered, setting's are not
+    expect(briefLine(picks, 7).parts.map((p) => p.bank)).toEqual([false, true, false, false]);
   });
 });

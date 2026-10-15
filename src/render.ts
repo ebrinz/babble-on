@@ -76,6 +76,23 @@ export function seedStamp(
 
 /** Label for the record button while a recording is in progress, e.g.
  *  "■ rec 1.2 MiB" (below 1 MiB: KiB). */
+const SLOT_ORDER = ["subject", "setting", "mood", "form"]; // byte order in babble_harness.compose
+const DISPLAY_ORDER = ["form", "subject", "setting", "mood"];
+
+/** One line naming the device's brief; a slot is bank-drawn when the bank
+ *  covered all four of its bytes (slot i spans bytes 4i..4i+3). */
+export function briefLine(
+  picks: Record<string, string>,
+  bankedBytes: number,
+): { text: string; parts: { slot: string; value: string; bank: boolean }[] } {
+  const parts = DISPLAY_ORDER.map((slot) => ({
+    slot,
+    value: picks[slot] ?? "",
+    bank: bankedBytes >= 4 * (SLOT_ORDER.indexOf(slot) + 1),
+  }));
+  return { text: parts.map((p) => p.value).join(" · "), parts };
+}
+
 export function recLabel(bytes: number): string {
   const size = bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MiB` : `${(bytes / 1024).toFixed(0)} KiB`;
   return `■ rec ${size}`;

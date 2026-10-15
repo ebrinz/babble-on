@@ -31,6 +31,8 @@ header button.rec { color:#ff4d4d; border-color:#5a2222; }
 .gen-params .check input { accent-color:var(--gold); }
 .gen-params label > span { color:var(--turq); min-width:30px; }
 .gen-output { flex:1; overflow-y:auto; min-height:0; white-space:pre-wrap; line-height:1.7; font-size:17px; letter-spacing:0.1px; }
+.gen-brief { font-size:13px; color:#9aaaa5; margin:0 0 4px; min-height:1.2em; }
+.gen-brief .pick.from-bank { color:var(--gold); }
 .gen-output .tok { transition:color 0.25s linear; border-radius:2px; }
 /* changed-this-step token: a gold glow that fades, so you see the text edit itself in place */
 .gen-output .tok.flash { animation:tokflash 0.55s ease-out; }

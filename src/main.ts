@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor, crystallize, heatColor, seedStamp, recLabel } from "./render";
+import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor, crystallize, heatColor, seedStamp, recLabel, briefLine } from "./render";
 import "./style.css";
 
 function canvas(id: string): [CanvasRenderingContext2D, number, number] {
@@ -173,6 +173,18 @@ function renderCrystal(tokens: string[], flash: boolean) {
     .join("");
 }
 
+let bankedBytes = 0;
+const genBrief = document.getElementById("gen-brief")!;
+
+// The device's brief (subject, setting, mood, form) as one line; picks whose
+// four seed bytes came from the anomaly bank are marked gold.
+function renderBrief(picks: Record<string, string>) {
+  const { parts } = briefLine(picks, bankedBytes);
+  genBrief.innerHTML = parts
+    .map((p) => `<span class="pick${p.bank ? " from-bank" : ""}" title="${p.slot}${p.bank ? " · anomaly bank" : " · live stream"}">${escape(p.value)}</span>`)
+    .join(" · ");
+}
+
 listen<any>("diffusion", (e) => {
   const m = e.payload;
   switch (m.type) {
@@ -185,7 +197,11 @@ listen<any>("diffusion", (e) => {
       genStatus.textContent = `crystallizing… step ${m.i}/${m.total}`;
       renderCrystal(m.tokens, true);
       break;
+    case "brief":
+      renderBrief(m.picks || {});
+      break;
     case "done":
+      if (m.brief && m.brief.picks && !genBrief.textContent) renderBrief(m.brief.picks);
       genStatus.textContent = m.stopped_early
         ? `done in ${m.elapsed}s · stopped early at step ${m.i}/${m.total}`
         : `done in ${m.elapsed}s`;
@@ -201,6 +217,7 @@ listen<any>("diffusion", (e) => {
       genBtn.disabled = false;
       break;
     case "seeded":
+      bankedBytes = m.banked_bytes || 0;
       document.getElementById("gen-seed")!.textContent =
         seedStamp(m.bank_fraction, m.tags || [], fmtClock);
       break;
@@ -227,6 +244,8 @@ genBtn.addEventListener("click", () => {
   genOutput.classList.add("boiling");
   genOutput.innerHTML = "";
   document.getElementById("gen-seed")!.textContent = "";
+  genBrief.textContent = "";
+  bankedBytes = 0;
   crystalTokens = [];
   crystalHeat = [];
   invoke("generate", {

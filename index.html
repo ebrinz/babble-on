@@ -40,7 +40,7 @@
             <option value="gemma">DiffusionGemma · sidecar</option>
           </select>
           <input id="prompt" type="text"
-                 placeholder="prompt (inpainted as a locked prefix) — leave blank for pure entropy babble" />
+                 placeholder="prompt — leave blank: Plaid babbles from pure entropy; DiffusionGemma lets the device write the brief" />
           <select id="gen-mode"></select>
           <button id="gen-btn">Generate</button>
           <button id="export-seed" title="spend the anomaly bank into a seed bundle (97 KiB, one DiffusionGemma canvas) for the harness">export seed</button>
@@ -53,6 +53,7 @@
             <span id="gen-noise-val">1.00</span></label>
           <label class="check"><input id="gen-ddim" type="checkbox" /> DDIM · deterministic (z₁ alone)</label>
         </div>
+        <div id="gen-brief" class="gen-brief"></div>
         <div id="gen-seed" class="gen-seed"></div>
         <div id="gen-output" class="gen-output"></div>
       </section>
