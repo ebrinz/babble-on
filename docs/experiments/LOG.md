@@ -454,4 +454,8 @@ so the per-position live view is unchanged. vitest and headless cases.
 running app after the next generation)_.
 
 **Decision:** Shipped as a display fix; the sidecar's `text` field was
-already clean, only the token view showed the scaffolding.
+already clean, only the token view showed the scaffolding. Follow-up the
+same evening after the first composed run showed the markers boiling in
+the live view: `liveTokens()` blanks the header span and the special
+markers (`<eos>`, `<pad>`, `<bos>`, turn and channel markers) in place
+during steps, keeping every position's slot and heat.

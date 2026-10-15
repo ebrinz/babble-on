@@ -115,6 +115,24 @@ export function finalTokens(tokens: string[]): string[] {
   return out;
 }
 
+const SPECIALS = ["<|channel>", "<channel|>", "<eos>", "<pad>", "<bos>", "<|turn>", "<turn|>"];
+
+/** The live canvas with the model's scaffolding blanked in place: the
+ *  thought-channel header (opener through closer) and special markers become
+ *  empty strings, so every position keeps its slot and heat while it boils. */
+export function liveTokens(tokens: string[]): string[] {
+  const out = tokens.slice();
+  const open = out.findIndex((t) => t.includes("<|channel>"));
+  if (open >= 0) {
+    const close = out.findIndex((t, i) => i >= open && t.includes("<channel|>"));
+    if (close >= 0) {
+      for (let i = open; i < close; i++) out[i] = "";
+      out[close] = out[close].slice(out[close].indexOf("<channel|>") + "<channel|>".length);
+    }
+  }
+  return out.map((t) => SPECIALS.reduce((s, m) => s.split(m).join(""), t));
+}
+
 export function recLabel(bytes: number): string {
   const size = bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MiB` : `${(bytes / 1024).toFixed(0)} KiB`;
   return `■ rec ${size}`;

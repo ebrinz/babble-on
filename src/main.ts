@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor, crystallize, heatColor, seedStamp, recLabel, briefLine, finalTokens } from "./render";
+import { drawCoherence, drawHistogram, drawBitstream, verdictColor, bandColor, crystallize, heatColor, seedStamp, recLabel, briefLine, finalTokens, liveTokens } from "./render";
 import "./style.css";
 
 function canvas(id: string): [CanvasRenderingContext2D, number, number] {
@@ -195,7 +195,7 @@ listen<any>("diffusion", (e) => {
       break;
     case "step":
       genStatus.textContent = `crystallizing… step ${m.i}/${m.total}`;
-      renderCrystal(m.tokens, true);
+      renderCrystal(liveTokens(m.tokens), true);
       break;
     case "brief":
       renderBrief(m.picks || {});

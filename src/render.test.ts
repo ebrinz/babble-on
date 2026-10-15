@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { envelopePoints, bandColor, verdictColor, crystallize, heatColor, seedStamp, recLabel, briefLine, finalTokens } from "./render";
+import { envelopePoints, bandColor, verdictColor, crystallize, heatColor, seedStamp, recLabel, briefLine, finalTokens, liveTokens } from "./render";
 
 describe("render helpers", () => {
   it("envelope is the parabola z*sqrt(k)", () => {
@@ -64,5 +64,13 @@ describe("render helpers", () => {
     expect(finalTokens(["x", "<channel|>", "y"])).toEqual(["x", "<channel|>", "y"]);
     // markers glued to text in one token still count
     expect(finalTokens(["<|channel>thought", "\n", "<channel|>In", " the"])).toEqual(["In", " the"]);
+  });
+  it("liveTokens blanks the channel header and special markers but keeps every position", () => {
+    const toks = ["<|channel>", "thought", "\n", "<channel|>", "The", " sea", "<eos>", "<pad>", "<turn|>", " <3"];
+    expect(liveTokens(toks)).toEqual(["", "", "", "", "The", " sea", "", "", "", " <3"]);
+    // a close marker with no opener is ordinary text; eos is still blanked
+    expect(liveTokens(["x", "<channel|>", "<eos>"])).toEqual(["x", "", ""]);
+    // markers glued to text keep the text
+    expect(liveTokens(["<channel|>In", "now.<eos>"])).toEqual(["In", "now."]);
   });
 });

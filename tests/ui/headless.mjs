@@ -101,6 +101,8 @@ assert((await page.$$eval("#gen-brief .pick.from-bank", (t) => t.length)) === 4,
 await page.evaluate(() => window.__emit("diffusion", { type: "step", i: 3, total: 32, tokens: ["The", " sea", " at"] }));
 assert((await text("#gen-status")).includes("step 3/32"), "step status");
 assert((await page.$$eval("#gen-output .tok", (t) => t.length)) === 3, "tokens rendered as spans");
+await page.evaluate(() => window.__emit("diffusion", { type: "step", i: 4, total: 32, tokens: ["<|channel>", "thought", "\n", "<channel|>", "The", " sea", "<eos>"] }));
+assert((await page.$$eval("#gen-output .tok", (t) => t.length)) === 7 && (await text("#gen-output")) === "The sea", "live view blanks scaffolding in place");
 await page.evaluate(() => window.__emit("diffusion", { type: "done", i: 12, total: 32, tokens: ["The", " sea", " at", " night"], elapsed: 4.2, stopped_early: true }));
 assert((await text("#gen-status")).includes("stopped early at step 12/32"), "done status reports early stop");
 assert((await text("#gen-brief")) === "a letter · a dog · on a farm · calm", "done with no brief leaves the line alone");
